@@ -1,0 +1,32 @@
+{
+  "entities": {
+    "PERSON": [
+      "Suresh Reddy"
+    ],
+    "ORGANIZATION": [
+      "Apollo Hospitals"
+    ],
+    "GPE": [
+      "Jubilee Hills",
+      "Hyderabad"
+    ]
+  },
+  "emails": [],
+  "phones": [
+    "040-2360 7777"
+  ],
+  "urls": [
+    "https://www.apollohospitals.com/book"
+  ],
+  "dates": [
+    "25/11/2026"
+  ],
+  "times": [
+    "10:15 am"
+  ],
+  "money": [
+    "₹800"
+  ],
+  "percentages": [],
+  "pin_codes": []
+}

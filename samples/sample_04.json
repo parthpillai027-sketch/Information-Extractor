@@ -1,0 +1,32 @@
+{
+  "entities": {
+    "PERSON": [
+      "Ananya",
+      "Vikram Iyer"
+    ],
+    "ORGANIZATION": [
+      "Freshworks"
+    ],
+    "GPE": [
+      "Chennai"
+    ]
+  },
+  "emails": [
+    "careers@freshworks.com"
+  ],
+  "phones": [
+    "044-4567 8901"
+  ],
+  "urls": [],
+  "dates": [
+    "7 December 2026"
+  ],
+  "times": [
+    "11 AM IST"
+  ],
+  "money": [
+    "INR 12 lakh"
+  ],
+  "percentages": [],
+  "pin_codes": []
+}

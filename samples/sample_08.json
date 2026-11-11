@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "ORGANIZATION": [
+      "IndiGo"
+    ],
+    "GPE": [
+      "Delhi",
+      "Guwahati",
+      "Kaziranga National Park",
+      "Shillong",
+      "Meghalaya"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [
+    "1 Dec 2026"
+  ],
+  "times": [
+    "06:45",
+    "09:20"
+  ],
+  "money": [
+    "$450"
+  ],
+  "percentages": [
+    "10%"
+  ],
+  "pin_codes": []
+}

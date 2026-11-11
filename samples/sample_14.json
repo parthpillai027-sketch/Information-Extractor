@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "PERSON": [
+      "Elena Petrova",
+      "Sundar Pichai"
+    ],
+    "ORGANIZATION": [
+      "Google"
+    ],
+    "GPE": [
+      "Moscow",
+      "Mountain View",
+      "Kenya",
+      "Ghana"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [
+    "12 October 2026"
+  ],
+  "times": [],
+  "money": [
+    "$2 million"
+  ],
+  "percentages": [],
+  "pin_codes": []
+}

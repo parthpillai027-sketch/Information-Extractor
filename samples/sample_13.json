@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "ORGANIZATION": [
+      "Zentech Solutions Pvt Ltd"
+    ],
+    "GPE": [
+      "Electronic City",
+      "Bengaluru"
+    ]
+  },
+  "emails": [
+    "accounts@zentech.co.in"
+  ],
+  "phones": [],
+  "urls": [],
+  "dates": [
+    "05.11.2026",
+    "20-11-2026"
+  ],
+  "times": [],
+  "money": [
+    "$1,200",
+    "INR 3,10,000"
+  ],
+  "percentages": [
+    "18%"
+  ],
+  "pin_codes": [
+    "560100"
+  ]
+}
