@@ -1,0 +1,1 @@
+Researchers at the Indian Institute of Science and Microsoft Research India trained a model on 1.2 million Kannada sentences. The model reached 91.4% accuracy, beating the previous best of 87 per cent reported by Prof. Partha Talukdar. Code is available at https://github.com/iisc-nlp/kannada-ner.

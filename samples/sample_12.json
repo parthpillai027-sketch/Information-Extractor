@@ -1,0 +1,17 @@
+{
+  "entities": {
+    "PERSON": [
+      "Priya"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [],
+  "times": [
+    "5 pm"
+  ],
+  "money": [],
+  "percentages": [],
+  "pin_codes": []
+}

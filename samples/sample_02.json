@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "PERSON": [
+      "Kavitha Menon"
+    ],
+    "ORGANIZATION": [
+      "Dayananda Sagar University",
+      "ISRO"
+    ],
+    "GPE": [
+      "Kumaraswamy Layout",
+      "Bengaluru"
+    ]
+  },
+  "emails": [
+    "fest@dsu.edu.in"
+  ],
+  "phones": [],
+  "urls": [
+    "www.dsu.edu.in"
+  ],
+  "dates": [
+    "20th November, 2026",
+    "18 Nov 2026"
+  ],
+  "times": [
+    "9:30 am"
+  ],
+  "money": [
+    "Rs. 300"
+  ],
+  "percentages": [],
+  "pin_codes": [
+    "560078"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "ORGANIZATION": [
+      "Ministry of Education"
+    ],
+    "GPE": [
+      "Karnataka",
+      "Kerala",
+      "Tamil Nadu"
+    ]
+  },
+  "emails": [],
+  "phones": [
+    "0120-6619540"
+  ],
+  "urls": [
+    "scholarships.gov.in"
+  ],
+  "dates": [
+    "31 January 2027"
+  ],
+  "times": [
+    "10 am",
+    "6 pm"
+  ],
+  "money": [
+    "Rs. 2,50,000"
+  ],
+  "percentages": [],
+  "pin_codes": []
+}
