@@ -21,6 +21,23 @@ PATTERNS = {
 CHUNKER = nltk.RegexpParser("NP: {<DT>?<JJ>*<NN.*>+}")
 STOP = set(stopwords.words("english"))
 
+# Punkt does not know Indian abbreviations such as "Rs." and would end a sentence there.
+ABBREVIATIONS = {"rs", "dr", "mr", "mrs", "ms", "prof", "no", "st", "ltd", "pvt", "co",
+                 "inc", "jr", "sr", "govt", "dept", "vs", "approx", "smt", "shri"}
+
+
+def split_sentences(text: str) -> list:
+    """Punkt sentence split, then re-join any split made right after a known abbreviation."""
+    sentences = []
+    for sent in nltk.sent_tokenize(text):
+        prev = sentences[-1] if sentences else ""
+        last_word = prev.rsplit(None, 1)[-1].rstrip(".").lower() if prev else ""
+        if prev.endswith(".") and last_word in ABBREVIATIONS:
+            sentences[-1] = prev + " " + sent
+        else:
+            sentences.append(sent)
+    return sentences
+
 
 def extract(text: str) -> dict:
     text = (text or "").strip()
@@ -30,8 +47,8 @@ def extract(text: str) -> dict:
         return result
 
     words = []
-    for sent in nltk.sent_tokenize(text):                  # 1. sentence segmentation
-        tokens = nltk.word_tokenize(sent)                  # 2. tokenization
+    for sent in split_sentences(text):                     # 1. sentence segmentation
+        tokens = nltk.word_tokenize(sent, preserve_line=True)  # 2. tokenization
         tagged = nltk.pos_tag(tokens)                      # 3. POS tagging
         result["nlp_steps"].append({"sentence": sent, "tokens": tokens,
                                     "pos": [list(p) for p in tagged]})
