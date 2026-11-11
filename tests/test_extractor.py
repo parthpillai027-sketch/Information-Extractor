@@ -63,6 +63,21 @@ def test_sentence_initial_common_word_is_not_an_entity():
     assert not any("Fee" in names for names in e.values())
 
 
+def test_imperative_verb_is_dropped_from_name():
+    assert extract("Meet Priya at 5 pm.")["entities"] == {"PERSON": ["Priya"]}
+    assert "Smriti Mandhana" in extract("Smriti Mandhana scored 117 runs.")["entities"]["PERSON"]
+
+
+def test_mistagged_city_is_still_found():
+    # The POS tagger tags "Guwahati" as a verb here; the capitalisation rule still finds it.
+    assert extract("Fly from Delhi to Guwahati today.")["entities"]["GPE"] == ["Delhi", "Guwahati"]
+
+
+def test_place_head_words():
+    e = extract("The office is on Jubilee Hills Road near Rajaji Nagar.")["entities"]
+    assert e["LOCATION"] == ["Jubilee Hills Road", "Rajaji Nagar"]
+
+
 # ----------------------------------------------------------- new fields
 def test_pin_codes():
     r = extract("Office: MG Road, Bengaluru 560001. Old address: Delhi - 110 001.")
@@ -115,6 +130,7 @@ def test_month_words_alone_are_not_dates():
     ("98765 43210", "98765 43210"),
     ("09876543210", "09876543210"),
     ("080-2345 6789", "080-2345 6789"),
+    ("1800 202 6161", "1800 202 6161"),
 ])
 def test_phone_formats(text, expected):
     assert extract(f"Call {text} today.")["phones"] == [expected]
@@ -128,6 +144,12 @@ def test_money_formats():
 def test_urls_without_trailing_punctuation():
     r = extract("See https://dsu.edu.in/admissions, or www.dsu.edu.in.")
     assert r["urls"] == ["https://dsu.edu.in/admissions", "www.dsu.edu.in"]
+
+
+def test_bare_domain_url_but_not_email_domain():
+    r = extract("Apply at scholarships.gov.in or mail help@nsp.gov.in today.")
+    assert r["urls"] == ["scholarships.gov.in"]
+    assert r["emails"] == ["help@nsp.gov.in"]
 
 
 def test_duplicates_removed_in_order():

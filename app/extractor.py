@@ -23,8 +23,8 @@ from nltk.chunk import tree2conlltags
 from nltk.corpus import stopwords
 from nltk.corpus import words as english_words
 
-from gazetteer import (FIRST_NAMES, KNOWN_ORGS, NOT_ENTITIES, ORG_WORDS, PLACES, SURNAMES,
-                       TITLES)
+from gazetteer import (FIRST_NAMES, KNOWN_ORGS, NOT_ENTITIES, ORG_WORDS, PLACE_WORDS, PLACES,
+                       SURNAMES, TITLES)
 
 # setup_nltk.py downloads the models into ./nltk_data. Look there first, so the app
 # works locally without NLTK_DATA set. On Render, NLTK_DATA points to the same folder.
@@ -51,14 +51,18 @@ _SCALE = r"(?:\s?(?:lakhs?|lacs?|crores?|cr|thousand|million|billion|mn|bn|k)\b)
 # Ordered by priority. A match is skipped if a field earlier in the list already used
 # those characters, e.g. the digits of a phone number never become a PIN code.
 FIXED_FORMATS = [
-    ("urls", re.compile(
-        r"\b(?:https?://|www\.)[^\s<>\"']{0,2000}[^\s<>\"'.,;:!?)\]]")),
     # Length limits ({1,64}) stop slow backtracking on very long words.
     ("emails", re.compile(
         r"\b[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}\b")),
+    ("urls", re.compile(r"""
+        \b(?:https?://|www\.)[^\s<>"']{0,2000}[^\s<>"'.,;:!?)\]]                  # https://..., www....
+      | (?<![\w@./-])(?:[a-z0-9-]{1,63}\.){1,6}(?:com|org|net|edu|gov|in|io|ai|co|ac|info)\b
+        (?:/[^\s<>"']{0,2000}[^\s<>"'.,;:!?)\]])?                                # dsu.edu.in/path
+    """, re.VERBOSE | re.IGNORECASE)),
     ("phones", re.compile(r"""
         (?<![\w+])(?:\+91[\s-]?|0)?[6-9]\d{4}[\s-]?\d{5}(?!\d)                    # mobile: +91 98765 43210
       | (?<![\w+])(?:\+91[\s-]?\(?|\(?0)[1-9]\d{1,3}\)?[\s-]\d{3,4}[\s-]?\d{4}(?!\d)  # landline: 080-2345 6789
+      | (?<![\w+])1800[\s-]?\d{3}[\s-]?\d{4}(?!\d)                               # toll-free: 1800 202 6161
     """, re.VERBOSE)),
     ("money", re.compile(rf"""
         (?:₹|\bRs\b\.?|\bINR\b|\$|\bUSD\b|€|£)\s?{_AMOUNT}{_SCALE}(?:/-)?   # Rs. 2,500 | ₹500 | INR 3 lakh
@@ -129,33 +133,62 @@ def _key(word):
     return word.lower().rstrip(".")
 
 
+def is_common_word(word):
+    """True for ordinary English words, including simple plurals ("shares" -> "share")."""
+    w, words = word.lower(), common_words()
+    return w in words or (w.endswith("s") and w[:-1] in words) or (w.endswith("es") and w[:-2] in words)
+
+
 def _in_name(row):
-    """A token belongs to a name if the NE chunker tagged it, or it is a capitalised NNP."""
+    """A token can be part of a name if the NE chunker tagged it, or it is capitalised and
+    either tagged NNP or not an ordinary English word (the tagger calls "Guwahati" a verb)."""
     word, pos, iob = row
     if _key(word) in NOT_ENTITIES or not any(ch.isalpha() for ch in word):
         return False
-    return iob != "O" or (pos.startswith("NNP") and word[:1].isupper())
+    if iob != "O":
+        return True
+    return word[:1].isupper() and (pos.startswith("NNP") or (
+        pos[:1] in "NVJ" and not is_common_word(word)))
+
+
+def _known_label(words):
+    """Label from the word lists alone, or None when they say nothing."""
+    name = " ".join(words).lower()
+    keys = [_key(w) for w in words]
+    if name in PLACE_KEYS:
+        return "GPE"
+    if name in ORG_KEYS or any(k in ORG_WORDS for k in keys):
+        return "ORGANIZATION"
+    if len(keys) > 1 and keys[-1] in PLACE_WORDS:
+        return "LOCATION"
+    if keys[0] in FIRST_NAMES or keys[-1] in SURNAMES:
+        return "PERSON"
+    return None
 
 
 def _label(words, chunker_labels, sentence_start):
-    """Decide PERSON / ORGANIZATION / GPE using the gazetteer first, then NLTK's label."""
+    """Decide PERSON / ORGANIZATION / GPE / LOCATION: word lists first, then NLTK's label."""
     has_title = _key(words[0]) in TITLES
     words = words[1:] if has_title else words
+    # "Meet Priya", "Visit Shillong": drop a capitalised ordinary word at the start of a
+    # sentence, but only when the rest is already a known name ("Smriti Mandhana" stays).
+    if (sentence_start and not has_title and len(words) > 1 and is_common_word(words[0])
+            and not _known_label(words) and _known_label(words[1:])):
+        words = words[1:]
     if not words:
         return None
     name = " ".join(words)
-    keys = [_key(w) for w in words]
 
-    if name.lower() in PLACE_KEYS:
-        return "GPE", name
-    if name.lower() in ORG_KEYS or any(k in ORG_WORDS for k in keys):
-        return "ORGANIZATION", name
-    if has_title or keys[0] in FIRST_NAMES or keys[-1] in SURNAMES:
+    known = _known_label(words)
+    if known:
+        return known, name
+    if has_title:
         return "PERSON", name
     if not chunker_labels:
         return None                      # plain capitalised word, no evidence it is a name
-    if sentence_start and len(keys) == 1 and keys[0] in common_words():
-        return None                      # "Fee is Rs. 500" - capital only because it starts the sentence
+    if len(words) == 1 and is_common_word(words[0]) and (
+            sentence_start or "PERSON" not in chunker_labels):
+        return None                      # "Fee is...", "Python", "Team": ordinary words, not names
     if "PERSON" in chunker_labels:       # "Rahul"(PERSON) + "Sharma"(ORGANIZATION) -> PERSON
         return "PERSON", name
     return Counter(chunker_labels).most_common(1)[0][0], name
@@ -188,10 +221,11 @@ def find_entities(tagged):
                     _key(w) in ORG_WORDS for w, _, _ in span):
                 parts = [span[:-size], span[-size:]]
                 break
+        starts_sentence = i == 0 or rows[i - 1][0] in {":", ";", "(", "``", '"', "-", "--"}
         for part in parts:
             entity = _label([w for w, _, _ in part],
                             [iob[2:] for _, _, iob in part if iob != "O"],
-                            sentence_start=(i == 0 and part is parts[0]))
+                            sentence_start=starts_sentence and part is parts[0])
             if entity:
                 found.append(entity)
         i = j
