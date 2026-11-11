@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Information Extractor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- Placeholder page so the app runs. Member 2 replaces this with the real design. -->
+  <h1>Information Extractor</h1>
+  <form method="post">
+    <textarea name="text" rows="6" cols="80" placeholder="Paste or type any text...">{{ text }}</textarea><br>
+    <button type="submit">Extract</button>
+  </form>
+  {% if result %}
+    <h2>Result (raw JSON)</h2>
+    <pre>{{ result | tojson(indent=2) }}</pre>
+  {% endif %}
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
