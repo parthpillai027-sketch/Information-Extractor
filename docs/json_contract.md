@@ -35,8 +35,8 @@ Formats recognised:
 | Key | Examples |
 |---|---|
 | `emails` | `rahul.s@infosys.com` |
-| `phones` | `+91 9876543210`, `+919876543210`, `98765 43210`, `080-2345 6789` |
-| `urls` | `https://dsu.edu.in/admissions`, `www.dsu.edu.in` |
+| `phones` | `+91 9876543210`, `+919876543210`, `98765 43210`, `080-2345 6789`, `1800 202 6161` |
+| `urls` | `https://dsu.edu.in/admissions`, `www.dsu.edu.in`, `scholarships.gov.in` |
 | `dates` | `15/11/2026`, `15-11-26`, `15.11.2026`, `2026-11-15`, `15 Nov 2026`, `15th November, 2026`, `November 15, 2026`, `Nov 2026` |
 | `times` | `10:30`, `10:30 am`, `9 PM`, `9.30 p.m.`, `18:45 hrs`, `1830 hrs` |
 | `money` | `Rs. 2,500`, `₹1,50,000/-`, `INR 3 lakh`, `$20`, `500 rupees` |

@@ -50,6 +50,14 @@ ORG_WORDS = {
     "organisation", "organization", "party", "consultancy", "infotech",
 }
 
+# A name ending in one of these words is a place: "Jubilee Hills", "MG Road", "Rajaji Nagar".
+PLACE_WORDS = {
+    "nagar", "layout", "road", "street", "marg", "colony", "city", "hills", "park", "lake",
+    "river", "beach", "fort", "valley", "island", "district", "village", "town", "sector",
+    "market", "circle", "puram", "halli", "palya", "bazaar", "chowk", "ganj", "pur", "abad",
+    "mountains", "falls", "sanctuary",
+}
+
 # Titles mark the next words as a person's name. The title itself is not kept.
 TITLES = {"mr", "mrs", "ms", "miss", "dr", "prof", "shri", "sri", "smt", "kumari"}
 
