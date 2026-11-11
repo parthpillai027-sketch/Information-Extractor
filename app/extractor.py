@@ -312,8 +312,8 @@ def extract(text) -> dict:
         for np in CHUNKER.parse(tagged).subtrees(lambda t: t.label() == "NP"):  # 5. NP chunking
             phrases.append(" ".join(word for word, _ in np.leaves()))
 
-        words += [w.lower() for w in tokens
-                  if w.isalpha() and len(w) > 1 and w.lower() not in STOP]
+        words += [w.lower() for w in tokens if w.isalpha() and len(w) > 1
+                  and w.lower() not in STOP and w.lower() not in NOT_ENTITIES]  # no "pm", "nov"
 
     result["entities"] = {label: unique(names) for label, names in result["entities"].items()}
     result["noun_phrases"] = unique(phrases)
