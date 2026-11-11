@@ -5,151 +5,379 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Information Extractor</title>
   <meta name="description" content="Extract people, places, organizations, dates, phones, emails and more from any English text using NLTK.">
+  <script>try { var t = localStorage.getItem("ie-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header class="top">
-    <div class="wrap">
-      <h1>Information Extractor</h1>
-      <p class="tagline">Paste any English text and pull out people, places, organizations, dates, phone numbers, emails, money and more, using NLP with <strong>NLTK</strong>.</p>
+{# ------------------------------------------------------------------ icons #}
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 5 9-5" opacity=".0"/></symbol>
+    <symbol id="i-flow" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="6" rx="1.5"/><rect x="14" y="15" width="7" height="6" rx="1.5"/><path d="M6.5 9v3.5a2 2 0 0 0 2 2h7a2 2 0 0 1 2 2V15"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1 0 8"/><path d="M12 12v9"/><path d="m9 15 3-3 3 3"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5-12-7.5Z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 10v10"/></symbol>
+    <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M10 3.5 11.6 8a2 2 0 0 0 1.3 1.3l4.6 1.6-4.6 1.6a2 2 0 0 0-1.3 1.3L10 18.5l-1.6-4.6a2 2 0 0 0-1.3-1.3L2.5 11l4.6-1.6A2 2 0 0 0 8.4 8L10 3.5Z"/><path d="M18 3v4M16 5h4M19 16v4M17 18h4"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6M9 11h.01M15 11h.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+    <symbol id="i-landmark" viewBox="0 0 24 24"><path d="M3 21h18M4 10h16M12 3l9 5H3l9-5ZM6 10v8M10 10v8M14 10v8M18 10v8"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24"><path d="M6 4h12M6 9h12M13.5 20 7 13h2.5a4.5 4.5 0 0 0 0-9"/></symbol>
+    <symbol id="i-percent" viewBox="0 0 24 24"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="8" cy="8" r="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  </defs>
+</svg>
+
+{# ------------------------------------------------------------- data setup #}
+{# Measured by scripts/evaluate.py on the 15 labelled samples (README, "Accuracy"). #}
+{% set accuracy = [
+  ('Person', 'person', 93), ('Organization', 'org', 88), ('Location', 'place', 95),
+  ('Date & time', 'date', 100), ('Email', 'contact', 100), ('Phone', 'contact', 100),
+  ('Amount', 'money', 100), ('Percentage', 'money', 100),
+] %}
+{% if result is not none %}
+  {% set e = result.entities %}
+  {% set places = e.get('GPE', []) + e.get('LOCATION', []) + e.get('GSP', []) %}
+  {% set types = [
+    ('Person', 'person', 'user', e.get('PERSON', [])),
+    ('Organization', 'org', 'building', e.get('ORGANIZATION', [])),
+    ('Location', 'place', 'pin', places),
+    ('Facility', 'place', 'landmark', e.get('FACILITY', [])),
+    ('Date', 'date', 'calendar', result.dates),
+    ('Time', 'date', 'clock', result.times),
+    ('Email', 'contact', 'mail', result.emails),
+    ('Phone', 'contact', 'phone', result.phones),
+    ('Link', 'contact', 'link', result.urls),
+    ('Amount', 'money', 'money', result.money),
+    ('Percentage', 'money', 'percent', result.percentages),
+    ('PIN code', 'money', 'hash', result.pin_codes),
+  ] %}
+  {% set found = types | selectattr(3) | list %}
+  {% set total = found | map(attribute=3) | map('length') | sum %}
+  {% set structured = dict(entities=result.entities, dates=result.dates, times=result.times,
+       emails=result.emails, phones=result.phones, urls=result.urls, money=result.money,
+       percentages=result.percentages, pin_codes=result.pin_codes, keywords=result.keywords) %}
+{% endif %}
+
+<div class="app" id="top">
+  {# --------------------------------------------------------------- sidebar #}
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Information Extractor home">
+      <span class="logo"><svg><use href="#i-text"/></svg></span>
+      <span class="brand-name">Information<br>Extractor</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#top" class="nav-link active" data-spy="kpis"><svg><use href="#i-home"/></svg><span>Dashboard</span></a>
+      <a href="#input" class="nav-link" data-spy="input"><svg><use href="#i-upload"/></svg><span>Upload</span></a>
+      <a href="#results" class="nav-link{% if result is none %} disabled{% endif %}" data-spy="results"><svg><use href="#i-layers"/></svg><span>Extraction Results</span></a>
+      <a href="#steps" class="nav-link{% if result is none or not result.nlp_steps %} disabled{% endif %}" data-spy="steps"><svg><use href="#i-flow"/></svg><span>NLP Steps</span></a>
+      <button type="button" class="nav-link" id="history-btn" aria-expanded="false" aria-controls="history"><svg><use href="#i-history"/></svg><span>History</span></button>
+      <div class="history" id="history" hidden>
+        <p class="history-empty">Texts you analyse appear here (saved only in this browser).</p>
+        <ul id="history-list"></ul>
+      </div>
+      <button type="button" class="nav-link" id="theme-btn"><svg class="when-light"><use href="#i-moon"/></svg><svg class="when-dark"><use href="#i-sun"/></svg><span class="when-light">Dark mode</span><span class="when-dark">Light mode</span></button>
+    </nav>
+
+    <div class="promo">
+      <svg class="promo-art" viewBox="0 0 120 100" aria-hidden="true">
+        <rect x="18" y="8" width="62" height="78" rx="8" class="pa-sheet2"/>
+        <rect x="10" y="14" width="62" height="78" rx="8" class="pa-sheet"/>
+        <rect x="20" y="28" width="30" height="5" rx="2.5" class="pa-line-a"/>
+        <rect x="20" y="40" width="42" height="4" rx="2" class="pa-line"/>
+        <rect x="20" y="50" width="36" height="4" rx="2" class="pa-line"/>
+        <rect x="20" y="60" width="40" height="4" rx="2" class="pa-line"/>
+        <circle cx="76" cy="62" r="17" class="pa-lens"/>
+        <path d="m88 74 14 14" class="pa-handle"/>
+      </svg>
+      <p class="promo-title">Extract valuable information from your documents</p>
+      <ul class="promo-list">
+        <li><svg><use href="#i-check"/></svg>Named Entity Recognition</li>
+        <li><svg><use href="#i-check"/></svg>Keywords &amp; key sentences</li>
+        <li><svg><use href="#i-check"/></svg>Structured output (JSON/CSV)</li>
+      </ul>
     </div>
-  </header>
+  </aside>
 
-  <main class="wrap">
-    <form method="post" class="panel input-panel" id="extract-form">
-      <label for="text" class="label">Your text</label>
-      <textarea id="text" name="text" rows="7" maxlength="100000"
-                placeholder="e.g. Rahul Sharma from Infosys will visit Bengaluru 560001 on 15 Nov 2026 at 10:30 am. Call +91 9876543210 or mail rahul.s@infosys.com. Fee is Rs. 2,500 with 18% GST.">{{ text }}</textarea>
-      <div class="row">
-        <div class="samples">
-          <span class="muted">Try:</span>
-          <button type="button" class="chip-btn" data-sample="0">Event notice</button>
-          <button type="button" class="chip-btn" data-sample="1">News</button>
-          <button type="button" class="chip-btn" data-sample="2">Order SMS</button>
+  {# ------------------------------------------------------------------ main #}
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1>Information Extractor</h1>
+        <p class="subtitle">NLP-powered document analysis with NLTK</p>
+      </div>
+      <a class="api-pill" href="#api" title="JSON API">API: <code>POST /api/extract</code></a>
+    </header>
+
+    {# ------------------------------------------------------------ KPI row #}
+    <section class="kpis" id="kpis" aria-label="Summary numbers">
+      <div class="kpi">
+        <span class="kpi-icon person"><svg><use href="#i-file"/></svg></span>
+        <div>
+          <p class="kpi-label">Entities Found</p>
+          <p class="kpi-value">{{ total if result is not none else '—' }}</p>
+          <p class="kpi-sub">{% if result is not none %}{{ found | length }} of 12 types{% else %}Run an analysis{% endif %}</p>
         </div>
-        <span class="muted" id="count">0 characters</span>
       </div>
-      <div class="actions">
-        <button type="submit" class="btn primary" id="submit-btn">Extract information</button>
-        <button type="button" class="btn" id="clear-btn">Clear</button>
-      </div>
-    </form>
-
-    {% if result is not none %}
-    {% set e = result.entities %}
-    {% set places = (e.get('GPE', []) + e.get('LOCATION', []) + e.get('GSP', [])) %}
-    {% set cards = [
-      ('People', 'person', e.get('PERSON', [])),
-      ('Organizations', 'org', e.get('ORGANIZATION', [])),
-      ('Places', 'place', places),
-      ('Facilities', 'place', e.get('FACILITY', [])),
-      ('Dates', 'date', result.dates),
-      ('Times', 'date', result.times),
-      ('Phone numbers', 'contact', result.phones),
-      ('Emails', 'contact', result.emails),
-      ('Links', 'contact', result.urls),
-      ('Money', 'money', result.money),
-      ('Percentages', 'money', result.percentages),
-      ('PIN codes', 'money', result.pin_codes),
-    ] %}
-    {% set found = cards | selectattr(2) | list %}
-
-    <section class="results" id="results">
-      <div class="stats">
-        <span><b>{{ result.stats.characters }}</b> characters</span>
-        <span><b>{{ result.stats.sentences }}</b> sentences</span>
-        <span><b>{{ result.stats.tokens }}</b> tokens</span>
-        <span><b>{{ found | map(attribute=2) | map('length') | sum }}</b> items found</span>
-      </div>
-      {% if result.stats.truncated %}
-        <p class="notice">Your text was long, so only the first {{ result.stats.characters }} characters were analysed.</p>
-      {% endif %}
-
-      {% if result.stats.characters %}
-      <div class="panel">
-        <h2>Highlighted text</h2>
-        <div class="legend">
-          <span class="hl person">Person</span><span class="hl org">Organization</span>
-          <span class="hl place">Place</span><span class="hl date">Date / time</span>
-          <span class="hl contact">Contact</span><span class="hl money">Number</span>
+      <div class="kpi">
+        <span class="kpi-icon org"><svg><use href="#i-layers"/></svg></span>
+        <div>
+          <p class="kpi-label">Sentences · Tokens</p>
+          <p class="kpi-value">{% if result is not none %}{{ result.stats.sentences }} <small>·</small> {{ result.stats.tokens }}{% else %}—{% endif %}</p>
+          <p class="kpi-sub">{% if result is not none %}{{ '{:,}'.format(result.stats.characters) }} characters{% else %}Paste text or upload a file{% endif %}</p>
         </div>
-        <p class="highlighted" id="highlighted">{{ text }}</p>
       </div>
-      {% endif %}
-
-      {% if found %}
-      <div class="grid">
-        {% for title, kind, items in found %}
-        <div class="card {{ kind }}">
-          <h3>{{ title }} <span class="count">{{ items | length }}</span></h3>
-          <ul class="chips">
-            {% for item in items %}<li>{{ item }}</li>{% endfor %}
-          </ul>
+      <div class="kpi">
+        <span class="kpi-icon place"><svg><use href="#i-target"/></svg></span>
+        <div>
+          <p class="kpi-label">Extraction Accuracy</p>
+          <p class="kpi-value">96%</p>
+          <p class="kpi-sub">F1 on 15 labelled samples</p>
         </div>
-        {% endfor %}
       </div>
-      {% elif result.stats.characters %}
-      <p class="panel muted">No names, dates, contacts or numbers were found in this text. See the keywords and NLP steps below.</p>
-      {% endif %}
-
-      {% if result.keywords or result.noun_phrases %}
-      <div class="grid two">
-        {% if result.keywords %}
-        <div class="card plain">
-          <h3>Top keywords <span class="count">{{ result.keywords | length }}</span></h3>
-          <ul class="chips">{% for k in result.keywords %}<li>{{ k }}</li>{% endfor %}</ul>
+      <div class="kpi">
+        <span class="kpi-icon date"><svg><use href="#i-zap"/></svg></span>
+        <div>
+          <p class="kpi-label">Processing Time</p>
+          <p class="kpi-value">{% if elapsed_ms is not none %}{% if elapsed_ms < 1000 %}{{ elapsed_ms | round | int }} <small>ms</small>{% else %}{{ '%.2f' | format(elapsed_ms / 1000) }} <small>s</small>{% endif %}{% else %}—{% endif %}</p>
+          <p class="kpi-sub">{% if elapsed_ms is not none %}NLTK pipeline on the server{% else %}Measured per analysis{% endif %}</p>
         </div>
-        {% endif %}
-        {% if result.noun_phrases %}
-        <div class="card plain">
-          <h3>Key phrases <span class="count">{{ result.noun_phrases | length }}</span></h3>
-          <ul class="chips">{% for p in result.noun_phrases[:30] %}<li>{{ p }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
       </div>
-      {% endif %}
+    </section>
 
-      {% if result.nlp_steps %}
-      <details class="panel steps">
-        <summary><h2>Show NLP steps</h2><span class="muted">sentence → tokens → POS tags</span></summary>
-        <ol class="pipeline">
-          <li><b>Sentence segmentation</b>: <code>sent_tokenize</code></li>
-          <li><b>Tokenization</b>: <code>word_tokenize</code></li>
-          <li><b>POS tagging</b>: <code>pos_tag</code></li>
-          <li><b>Named-entity recognition</b>: <code>ne_chunk</code> + rules</li>
-          <li><b>Noun-phrase chunking</b>: <code>RegexpParser</code></li>
-          <li><b>Keywords</b>: stopwords + <code>FreqDist</code></li>
-        </ol>
-        {% for step in result.nlp_steps[:50] %}
-        <div class="sentence">
-          <p class="sent-text"><span class="sent-no">{{ loop.index }}</span>{{ step.sentence }}</p>
-          <div class="tokens">
-            {% for word, tag in step.pos %}
-            <span class="tok" data-tag="{{ tag }}"><span class="w">{{ word }}</span><span class="t">{{ tag }}</span></span>
+    <div class="layout">
+      {# ------------------------------------------------------ left column #}
+      <div class="col">
+        <form method="post" class="panel input-panel" id="extract-form" action="/#results">
+          <div class="tabs" role="tablist" aria-label="Input method" id="input">
+            <button type="button" class="tab active" role="tab" aria-selected="true" aria-controls="pane-paste" id="tab-paste"><svg><use href="#i-file"/></svg>Paste Text</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="pane-upload" id="tab-upload"><svg><use href="#i-upload"/></svg>Upload File</button>
+          </div>
+
+          <div class="pane" id="pane-paste" role="tabpanel" aria-labelledby="tab-paste">
+            <label for="text" class="sr-only">Your text</label>
+            <textarea id="text" name="text" rows="7" maxlength="100000"
+                      placeholder="Paste any English text, e.g. Rahul Sharma from Infosys will visit Bengaluru 560001 on 15 Nov 2026 at 10:30 am. Call +91 9876543210 or mail rahul.s@infosys.com.">{{ text }}</textarea>
+            <div class="row">
+              <div class="samples">
+                <span class="muted">Try a sample:</span>
+                <button type="button" class="chip-btn" data-sample="0">Event notice</button>
+                <button type="button" class="chip-btn" data-sample="1">News</button>
+                <button type="button" class="chip-btn" data-sample="2">Order SMS</button>
+              </div>
+              <span class="muted" id="count">0 characters</span>
+            </div>
+          </div>
+
+          <div class="pane" id="pane-upload" role="tabpanel" aria-labelledby="tab-upload" hidden>
+            <div class="upload-row">
+              <label class="dropzone" id="dropzone" for="file">
+                <svg class="dz-icon"><use href="#i-cloud"/></svg>
+                <span class="dz-title">Drag &amp; drop a file here</span>
+                <span class="muted">or click to browse from your computer</span>
+                <span class="formats"><span class="fmt txt">TXT</span><span class="fmt md">MD</span><span class="fmt csv">CSV</span></span>
+                <span class="muted small">Plain-text files up to 1 MB. The text is loaded into the box above.</span>
+                <input type="file" id="file" accept=".txt,.md,.csv,.text,text/plain" class="sr-only">
+              </label>
+              <div class="file-card" id="file-card" hidden>
+                <span class="file-badge"><svg><use href="#i-file"/></svg></span>
+                <div class="file-meta"><p class="file-name" id="file-name"></p><p class="muted small" id="file-size"></p></div>
+                <span class="file-ok"><svg><use href="#i-check"/></svg></span>
+              </div>
+            </div>
+            <p class="upload-error" id="upload-error" role="alert" hidden></p>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn primary" id="submit-btn"><svg><use href="#i-play"/></svg><span>Analyze</span></button>
+            <button type="button" class="btn ghost" id="clear-btn">Clear</button>
+            <span class="muted small hint">Ctrl + Enter to analyze</span>
+          </div>
+        </form>
+
+        {% if result is not none %}
+        <section id="results" class="results">
+          {% if result.stats.truncated %}
+            <p class="notice">Your text was long, so only the first {{ '{:,}'.format(result.stats.characters) }} characters were analysed.</p>
+          {% endif %}
+
+          {% if result.stats.characters %}
+          <div class="panel">
+            <div class="panel-head">
+              <h2><svg><use href="#i-file"/></svg>Document Text <span class="muted-h">(with highlighted entities)</span></h2>
+              <div class="legend">
+                <span class="lg person">Person</span><span class="lg org">Organization</span>
+                <span class="lg place">Location</span><span class="lg date">Date / time</span>
+                <span class="lg contact">Contact</span><span class="lg money">Number</span>
+              </div>
+            </div>
+            <p class="highlighted" id="highlighted">{{ text }}</p>
+            <div class="panel-foot">
+              <button type="button" class="btn outline" id="export-json"><svg><use href="#i-download"/></svg>Export JSON</button>
+              <button type="button" class="btn outline" id="export-csv"><svg><use href="#i-table"/></svg>Export CSV</button>
+            </div>
+          </div>
+          {% else %}
+          <p class="panel muted">The text box was empty. Paste some text or pick a sample, then click Analyze.</p>
+          {% endif %}
+
+          {% if result.stats.characters %}
+          <div class="panel">
+            <div class="panel-head">
+              <h2><svg><use href="#i-layers"/></svg>Structured Output</h2>
+            </div>
+            <div class="out-grid">
+              <div class="code-card">
+                <div class="code-head">
+                  <span><svg><use href="#i-braces"/></svg>JSON (structured)</span>
+                  <button type="button" class="icon-btn" id="copy-btn" title="Copy JSON" aria-label="Copy JSON"><svg><use href="#i-copy"/></svg></button>
+                </div>
+                <pre id="json">{{ structured | tojson(indent=2) }}</pre>
+              </div>
+              <div class="table-card">
+                <div class="code-head"><span><svg><use href="#i-table"/></svg>Entity Preview (Table)</span><span class="muted small">{{ total }} rows</span></div>
+                {% if found %}
+                <div class="table-scroll">
+                  <table>
+                    <thead><tr><th>Entity</th><th>Type</th><th class="num">In text</th></tr></thead>
+                    <tbody>
+                      {% for label, kind, icon, items in found %}{% for item in items %}
+                      <tr><td>{{ item }}</td><td><span class="badge {{ kind }}">{{ label }}</span></td><td class="num">{{ text.count(item) or 1 }}×</td></tr>
+                      {% endfor %}{% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+                {% else %}
+                <p class="empty muted">No names, dates, contacts or numbers were found in this text.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if result.nlp_steps %}
+          <details class="panel steps" id="steps">
+            <summary>
+              <h2><svg><use href="#i-flow"/></svg>NLP Steps</h2>
+              <span class="muted small">sentence → tokens → POS tags (click to open)</span>
+            </summary>
+            <ol class="pipeline">
+              <li><b>Sentence segmentation</b> <code>sent_tokenize</code></li>
+              <li><b>Tokenization</b> <code>word_tokenize</code></li>
+              <li><b>POS tagging</b> <code>pos_tag</code></li>
+              <li><b>Named-entity recognition</b> <code>ne_chunk</code> + rules</li>
+              <li><b>Noun-phrase chunking</b> <code>RegexpParser</code></li>
+              <li><b>Keywords</b> stopwords + <code>FreqDist</code></li>
+            </ol>
+            {% for step in result.nlp_steps[:50] %}
+            <div class="sentence">
+              <p class="sent-text"><span class="sent-no">{{ loop.index }}</span>{{ step.sentence }}</p>
+              <div class="tokens">
+                {% for word, tag in step.pos %}<span class="tok" data-tag="{{ tag }}"><span class="w">{{ word }}</span><span class="t">{{ tag }}</span></span>{% endfor %}
+              </div>
+            </div>
             {% endfor %}
+            {% if result.nlp_steps | length > 50 %}
+              <p class="muted">Showing the first 50 of {{ result.nlp_steps | length }} sentences.</p>
+            {% endif %}
+          </details>
+          {% endif %}
+        </section>
+        <script type="application/json" id="result-data">{{ result | tojson }}</script>
+        {% endif %}
+      </div>
+
+      {# ----------------------------------------------------- right column #}
+      <aside class="col insights" aria-label="Extraction insights">
+        <div class="panel">
+          <h2 class="insights-title"><svg><use href="#i-sparkles"/></svg>Extraction Insights</h2>
+
+          <div class="sub-card">
+            <h3><svg><use href="#i-layers"/></svg>Extracted Entities{% if result is not none %} ({{ total }}){% endif %}</h3>
+            {% if result is not none and found %}
+            <ul class="ent-list">
+              {% for label, kind, icon, items in found %}
+              <li>
+                <span class="ent-icon {{ kind }}"><svg><use href="#i-{{ icon }}"/></svg></span>
+                <span class="ent-type">{{ label }}</span>
+                <span class="ent-vals" title="{{ items | join(', ') }}">{{ items | join(', ') }}</span>
+                <span class="ent-count">{{ items | length }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% elif result is not none %}
+            <p class="empty muted">Nothing found in this text.</p>
+            {% else %}
+            <p class="empty muted">People, organisations, places, dates, contacts and amounts will be listed here after you click Analyze.</p>
+            {% endif %}
+          </div>
+
+          <div class="sub-card">
+            <h3><svg><use href="#i-tag"/></svg>Keywords</h3>
+            {% if result is not none and result.keywords %}
+            <ul class="pills">{% for k in result.keywords %}<li>{{ k }}</li>{% endfor %}</ul>
+            {% if result.noun_phrases %}
+            <p class="mini-label">Key phrases</p>
+            <ul class="pills soft">{% for p in result.noun_phrases[:12] %}<li>{{ p }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% else %}
+            <p class="empty muted">Most frequent content words (stopwords removed).</p>
+            {% endif %}
+          </div>
+
+          <div class="sub-card">
+            <h3><svg><use href="#i-list"/></svg>Summary</h3>
+            {% if result is not none and result.nlp_steps %}
+            <p class="summary" id="summary">{{ result.nlp_steps[0].sentence }}</p>
+            <p class="muted small" id="summary-note">Extractive: the sentences that score highest on keywords and entities.</p>
+            {% else %}
+            <p class="empty muted">The most important sentences of your text will be shown here.</p>
+            {% endif %}
           </div>
         </div>
-        {% endfor %}
-        {% if result.nlp_steps | length > 50 %}
-          <p class="muted">Showing the first 50 of {{ result.nlp_steps | length }} sentences.</p>
-        {% endif %}
-      </details>
-      {% endif %}
 
-      <details class="panel">
-        <summary><h2>Raw JSON</h2><span class="muted">same as <code>POST /api/extract</code></span></summary>
-        <button type="button" class="btn small" id="copy-btn">Copy JSON</button>
-        <pre id="json">{{ result | tojson(indent=2) }}</pre>
-      </details>
-    </section>
-    <script type="application/json" id="result-data">{{ result | tojson }}</script>
-    {% endif %}
-  </main>
+        <div class="panel">
+          <h2 class="insights-title"><svg><use href="#i-target"/></svg>Accuracy by Type</h2>
+          <ul class="bars">
+            {% for label, kind, f1 in accuracy %}
+            <li><span>{{ label }}</span><span class="bar"><span class="bar-fill" style="width: {{ f1 }}%"></span></span><b>{{ f1 }}%</b></li>
+            {% endfor %}
+          </ul>
+          <p class="muted small">F1 score from <code>scripts/evaluate.py</code> on 15 hand-labelled texts. These texts were also used to tune the rules, so real-world accuracy will be lower.</p>
+        </div>
+      </aside>
+    </div>
 
-  <footer class="wrap foot">
-    <p>Built with Python, Flask and NLTK · API: <code>POST /api/extract</code> with <code>{"text": "..."}</code></p>
-  </footer>
+    <footer class="foot" id="api">
+      <p>Built with Python, Flask and NLTK · JSON API: <code>POST /api/extract</code> with <code>{"text": "..."}</code></p>
+    </footer>
+  </div>
+</div>
 
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
