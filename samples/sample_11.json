@@ -1,0 +1,34 @@
+{
+  "entities": {
+    "PERSON": [
+      "Neha Gupta"
+    ],
+    "ORGANIZATION": [
+      "Flipkart"
+    ],
+    "GPE": [
+      "Park Street",
+      "Kolkata"
+    ]
+  },
+  "emails": [],
+  "phones": [
+    "98300 12345"
+  ],
+  "urls": [
+    "www.flipkart.com/orders"
+  ],
+  "dates": [
+    "13th November 2026"
+  ],
+  "times": [
+    "8 p.m."
+  ],
+  "money": [
+    "₹2,349"
+  ],
+  "percentages": [],
+  "pin_codes": [
+    "700016"
+  ]
+}

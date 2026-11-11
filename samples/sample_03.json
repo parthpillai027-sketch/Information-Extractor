@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "PERSON": [
+      "Shailesh Chandra"
+    ],
+    "ORGANIZATION": [
+      "Tata Motors",
+      "National Stock Exchange"
+    ],
+    "GPE": [
+      "Mumbai",
+      "United Kingdom"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [
+    "3 March 2026"
+  ],
+  "times": [],
+  "money": [
+    "₹5,400 crore",
+    "Rs 1,045"
+  ],
+  "percentages": [
+    "14.5%",
+    "22 percent"
+  ],
+  "pin_codes": []
+}

@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "PERSON": [
+      "Smriti Mandhana"
+    ],
+    "ORGANIZATION": [
+      "BCCI"
+    ],
+    "GPE": [
+      "India",
+      "Australia",
+      "Bengaluru"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [],
+  "times": [],
+  "money": [
+    "Rs 50 lakh"
+  ],
+  "percentages": [
+    "30%"
+  ],
+  "pin_codes": []
+}

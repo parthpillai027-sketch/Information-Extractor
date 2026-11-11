@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "PERSON": [
+      "Rahul Sharma"
+    ],
+    "ORGANIZATION": [
+      "Infosys"
+    ],
+    "GPE": [
+      "Bengaluru"
+    ]
+  },
+  "emails": [
+    "rahul.s@infosys.com"
+  ],
+  "phones": [
+    "+91 9876543210"
+  ],
+  "urls": [],
+  "dates": [
+    "15/11/2026"
+  ],
+  "times": [],
+  "money": [
+    "Rs. 2,500"
+  ],
+  "percentages": [],
+  "pin_codes": []
+}

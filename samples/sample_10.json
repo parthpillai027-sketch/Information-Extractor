@@ -1,0 +1,24 @@
+{
+  "entities": {
+    "PERSON": [
+      "Partha Talukdar"
+    ],
+    "ORGANIZATION": [
+      "Indian Institute of Science",
+      "Microsoft Research India"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [
+    "https://github.com/iisc-nlp/kannada-ner"
+  ],
+  "dates": [],
+  "times": [],
+  "money": [],
+  "percentages": [
+    "91.4%",
+    "87 per cent"
+  ],
+  "pin_codes": []
+}
