@@ -1,4 +1,5 @@
 nltk>=3.9.1
+numpy>=1.26       # needed by NLTK's NE chunker (nltk does not install it)
 flask>=3.0
 gunicorn>=21.2
 pytest>=8.0
