@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "PERSON": [
+      "Arjun"
+    ],
+    "ORGANIZATION": [
+      "Zoho Corporation"
+    ],
+    "GPE": [
+      "Chennai"
+    ]
+  },
+  "emails": [
+    "hr@zohocorp.com"
+  ],
+  "phones": [
+    "044-6744 7070"
+  ],
+  "urls": [],
+  "dates": [
+    "1 December 2026"
+  ],
+  "times": [
+    "10:00 AM"
+  ],
+  "money": [
+    "INR 8.5 lakh"
+  ],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Zoho Corporation"
+      ],
+      "action": "has selected",
+      "where": [
+        "Chennai"
+      ],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "is",
+      "where": [],
+      "when": [
+        "1 December 2026",
+        "10:00 AM"
+      ],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "is",
+      "where": [],
+      "when": [],
+      "how_much": [
+        "INR 8.5 lakh"
+      ]
+    },
+    {
+      "who": [],
+      "action": "contact",
+      "where": [],
+      "when": [],
+      "how_much": []
+    }
+  ]
+}

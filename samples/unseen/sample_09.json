@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "GPE": [
+      "Kedarnath Temple",
+      "Uttarakhand"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [],
+  "times": [
+    "6 am",
+    "9 pm"
+  ],
+  "money": [],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [],
+      "action": "visit",
+      "where": [
+        "Kedarnath Temple",
+        "Uttarakhand"
+      ],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "opens",
+      "where": [],
+      "when": [
+        "6 am"
+      ],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "closes",
+      "where": [],
+      "when": [
+        "9 pm"
+      ],
+      "how_much": []
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "ORGANIZATION": [
+      "Department of Computer Science",
+      "Christ University"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [
+    "hackathon.christuniversity.in"
+  ],
+  "dates": [
+    "28 November 2026",
+    "25 Nov 2026"
+  ],
+  "times": [
+    "9 am",
+    "5 pm"
+  ],
+  "money": [
+    "₹50,000"
+  ],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Department of Computer Science",
+        "Christ University"
+      ],
+      "action": "will conduct",
+      "where": [],
+      "when": [
+        "28 November 2026",
+        "9 am",
+        "5 pm"
+      ],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "must register",
+      "where": [],
+      "when": [
+        "25 Nov 2026"
+      ],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "will be given",
+      "where": [],
+      "when": [],
+      "how_much": [
+        "₹50,000"
+      ]
+    }
+  ]
+}

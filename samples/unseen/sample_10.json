@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "PERSON": [
+      "Meera Krishnan"
+    ],
+    "ORGANIZATION": [
+      "AIIMS",
+      "Indian Council of Medical Research"
+    ],
+    "GPE": [
+      "Delhi"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [],
+  "times": [],
+  "money": [],
+  "percentages": [
+    "92%"
+  ],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Meera Krishnan"
+      ],
+      "action": "said",
+      "where": [],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "recovered",
+      "where": [],
+      "when": [],
+      "how_much": [
+        "92%"
+      ]
+    },
+    {
+      "who": [
+        "Indian Council of Medical Research"
+      ],
+      "action": "was funded",
+      "where": [],
+      "when": [],
+      "how_much": []
+    }
+  ]
+}

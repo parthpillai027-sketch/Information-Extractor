@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "ORGANIZATION": [
+      "Indian Space Research Organisation"
+    ],
+    "PERSON": [
+      "V. Narayanan"
+    ],
+    "GPE": [
+      "Sriharikota"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [
+    "14 July 2026"
+  ],
+  "times": [],
+  "money": [
+    "₹2,100 crore"
+  ],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Indian Space Research Organisation"
+      ],
+      "action": "launched",
+      "where": [
+        "Sriharikota"
+      ],
+      "when": [
+        "14 July 2026"
+      ],
+      "how_much": []
+    },
+    {
+      "who": [
+        "V. Narayanan"
+      ],
+      "action": "said",
+      "where": [],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "cost",
+      "where": [],
+      "when": [],
+      "how_much": [
+        "₹2,100 crore"
+      ]
+    }
+  ]
+}

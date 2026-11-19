@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "ORGANIZATION": [
+      "Amazon"
+    ],
+    "GPE": [
+      "Imphal"
+    ]
+  },
+  "emails": [],
+  "phones": [
+    "1800 3000 9009"
+  ],
+  "urls": [
+    "amazon.in/help"
+  ],
+  "dates": [
+    "22 Nov 2026"
+  ],
+  "times": [],
+  "money": [
+    "Rs. 1,299"
+  ],
+  "percentages": [],
+  "pin_codes": [
+    "795001"
+  ],
+  "facts": [
+    {
+      "who": [
+        "Amazon"
+      ],
+      "action": "will deliver",
+      "where": [
+        "Imphal",
+        "795001"
+      ],
+      "when": [
+        "22 Nov 2026"
+      ],
+      "how_much": [
+        "Rs. 1,299"
+      ]
+    },
+    {
+      "who": [],
+      "action": "call",
+      "where": [],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [],
+      "action": "visit",
+      "where": [],
+      "when": [],
+      "how_much": []
+    }
+  ]
+}

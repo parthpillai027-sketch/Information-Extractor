@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "PERSON": [
+      "Lord Shiva",
+      "Goddess Parvati",
+      "Lord Ganesha"
+    ],
+    "GPE": [
+      "Mount Kailash",
+      "India"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [],
+  "times": [],
+  "money": [],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Lord Shiva",
+        "Goddess Parvati"
+      ],
+      "action": "live",
+      "where": [
+        "Mount Kailash"
+      ],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [
+        "Lord Ganesha"
+      ],
+      "action": "is worshipped",
+      "where": [
+        "India"
+      ],
+      "when": [],
+      "how_much": []
+    }
+  ]
+}
