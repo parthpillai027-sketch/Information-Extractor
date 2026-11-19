@@ -1,155 +1,895 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Information Extractor</title>
-  <meta name="description" content="Extract people, places, organizations, dates, phones, emails and more from any English text using NLTK.">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Information Extractor</title>
+<meta name="description" content="Turn any English text into structured data: people, organisations, places, dates, contacts and amounts, using NLTK.">
+<script>try{var t=localStorage.getItem("ie-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* ============================================================ tokens */
+:root{
+  --bg:#09090b; --bg-2:#0c0c0f; --card:#111114; --card-2:#16161a; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+  --text:#fafafa; --text-2:#a1a1aa; --text-3:#71717a;
+  --accent:#8b5cf6; --accent-2:#6366f1; --accent-ink:#c4b5fd; --glow:rgba(139,92,246,.35);
+  --grid:rgba(255,255,255,.045);
+  --person:#c4b5fd; --person-bg:rgba(139,92,246,.16);
+  --org:#93c5fd;    --org-bg:rgba(59,130,246,.16);
+  --place:#6ee7b7;  --place-bg:rgba(16,185,129,.15);
+  --date:#fcd34d;   --date-bg:rgba(245,158,11,.15);
+  --contact:#5eead4;--contact-bg:rgba(20,184,166,.15);
+  --money:#fda4af;  --money-bg:rgba(244,63,94,.15);
+  --shadow:0 0 0 1px var(--line),0 20px 50px -20px rgba(0,0,0,.6);
+  --r:18px; color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#fafafa; --bg-2:#f4f4f5; --card:#ffffff; --card-2:#f7f7f8; --line:rgba(9,9,11,.08); --line-2:rgba(9,9,11,.16);
+  --text:#09090b; --text-2:#52525b; --text-3:#71717a;
+  --accent:#7c3aed; --accent-2:#4f46e5; --accent-ink:#6d28d9; --glow:rgba(124,58,237,.22);
+  --grid:rgba(9,9,11,.05);
+  --person:#6d28d9; --person-bg:rgba(139,92,246,.12);
+  --org:#1d4ed8;    --org-bg:rgba(59,130,246,.12);
+  --place:#047857;  --place-bg:rgba(16,185,129,.13);
+  --date:#a16207;   --date-bg:rgba(245,158,11,.16);
+  --contact:#0f766e;--contact-bg:rgba(20,184,166,.13);
+  --money:#be123c;  --money-bg:rgba(244,63,94,.11);
+  --shadow:0 0 0 1px var(--line),0 12px 32px -16px rgba(9,9,11,.18);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme]){
+    --bg:#fafafa; --bg-2:#f4f4f5; --card:#ffffff; --card-2:#f7f7f8; --line:rgba(9,9,11,.08); --line-2:rgba(9,9,11,.16);
+    --text:#09090b; --text-2:#52525b; --text-3:#71717a;
+    --accent:#7c3aed; --accent-2:#4f46e5; --accent-ink:#6d28d9; --glow:rgba(124,58,237,.22);
+    --grid:rgba(9,9,11,.05);
+    --person:#6d28d9; --person-bg:rgba(139,92,246,.12); --org:#1d4ed8; --org-bg:rgba(59,130,246,.12);
+    --place:#047857; --place-bg:rgba(16,185,129,.13); --date:#a16207; --date-bg:rgba(245,158,11,.16);
+    --contact:#0f766e; --contact-bg:rgba(20,184,166,.13); --money:#be123c; --money-bg:rgba(244,63,94,.11);
+    --shadow:0 0 0 1px var(--line),0 12px 32px -16px rgba(9,9,11,.18); color-scheme:light;
+  }
+}
+
+/* ============================================================ base */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 Geist,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,p{margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+code,pre,.mono{font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+::selection{background:var(--glow)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* backdrop: dotted grid + glow */
+.backdrop{position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:radial-gradient(var(--grid) 1px,transparent 1px);background-size:22px 22px;
+  -webkit-mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 30%,transparent 75%)}
+.glow-wrap{position:absolute;left:0;right:0;top:0;height:760px;overflow:hidden;z-index:-1;pointer-events:none}
+.glow{position:absolute;left:50%;top:-160px;width:900px;height:520px;transform:translateX(-50%);z-index:-1;pointer-events:none;
+  background:radial-gradient(closest-side,var(--glow),transparent 70%);filter:blur(20px);opacity:.9}
+
+/* ============================================================ nav */
+.nav{position:sticky;top:0;z-index:20;backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);
+  background:color-mix(in srgb,var(--bg) 72%,transparent);border-bottom:1px solid var(--line)}
+.nav-in{display:flex;align-items:center;gap:22px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em;color:var(--text);text-decoration:none}
+.mark{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 0 1px rgba(255,255,255,.15) inset,0 6px 18px -4px var(--glow)}
+.mark svg{width:15px;height:15px;stroke:#fff;stroke-width:2.2}
+.links{display:flex;gap:4px}
+.links a{padding:6px 10px;border-radius:8px;color:var(--text-2);text-decoration:none;font-size:.9rem}
+.links a:hover{color:var(--text);background:var(--card-2)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.status{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;font-size:.78rem;color:var(--text-2);background:var(--card)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text-3)}
+.status.on .dot{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.status.off .dot{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+.icon-btn{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text-2)}
+.icon-btn:hover{color:var(--text);border-color:var(--line-2)}
+.t-light{display:none}
+:root[data-theme="light"] .t-light{display:block} :root[data-theme="light"] .t-dark{display:none}
+@media (prefers-color-scheme:light){:root:not([data-theme]) .t-light{display:block}:root:not([data-theme]) .t-dark{display:none}}
+
+/* ============================================================ hero */
+.hero{padding:76px 0 34px;text-align:center}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:.8rem;color:var(--text-2)}
+.badge b{padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:500;font-size:.72rem}
+h1{margin:20px auto 14px;max-width:820px;font-size:clamp(2.1rem,5.4vw,3.9rem);line-height:1.04;letter-spacing:-.045em;font-weight:600}
+.grad{background:linear-gradient(120deg,var(--accent-ink),var(--accent) 40%,var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:600px;margin:0 auto;color:var(--text-2);font-size:1.06rem}
+
+/* ============================================================ composer */
+.composer{position:relative;max-width:820px;margin:34px auto 0;text-align:left;border-radius:22px;padding:1px;
+  background:linear-gradient(180deg,var(--line-2),var(--line));transition:background .25s}
+.composer:focus-within,.composer.drag{background:linear-gradient(135deg,var(--accent),var(--line-2) 45%,var(--accent-2))}
+.composer-in{border-radius:21px;background:var(--card);box-shadow:0 30px 80px -30px var(--glow)}
+textarea{display:block;width:100%;min-height:150px;max-height:420px;resize:vertical;padding:20px 22px 8px;border:0;background:transparent;outline:none;line-height:1.65;font-size:1rem}
+textarea::placeholder{color:var(--text-3)}
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px 12px 14px}
+.tool{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:9px;border:1px solid var(--line);background:var(--card-2);color:var(--text-2);font-size:.82rem;white-space:nowrap}
+.tool:hover{color:var(--text);border-color:var(--line-2)}
+.sep{width:1px;height:20px;background:var(--line);margin:0 2px}
+.count{margin-left:auto;font-size:.78rem;color:var(--text-3)}
+.go{position:relative;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 16px;border:0;border-radius:11px;font-weight:600;font-size:.88rem;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 8px 22px -6px var(--glow);transition:transform .08s,filter .15s}
+.go:hover{filter:brightness(1.08)} .go:active{transform:translateY(1px)}
+.go:disabled{filter:saturate(.6) brightness(.9);cursor:progress}
+.kbd{padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.18);font:500 .7rem "Geist Mono",monospace}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.drop-hint{position:absolute;inset:1px;border-radius:21px;display:grid;place-items:center;gap:6px;background:color-mix(in srgb,var(--card) 88%,transparent);color:var(--accent-ink);font-weight:600;pointer-events:none;opacity:0;transition:opacity .15s}
+.composer.drag .drop-hint{opacity:1}
+.file-pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 10px;border-radius:8px;background:var(--person-bg);color:var(--person);font-size:.78rem;max-width:220px}
+.file-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-pill button{display:grid;place-items:center;width:20px;height:20px;border:0;border-radius:6px;background:transparent;color:inherit}
+.file-pill button:hover{background:rgba(255,255,255,.12)}
+.under{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 22px;margin-top:18px;color:var(--text-3);font-size:.84rem}
+.under span{display:inline-flex;align-items:center;gap:7px}
+.under svg{color:var(--accent-ink)}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;z-index:50;transform:translate(-50%,20px);opacity:0;display:flex;align-items:flex-start;gap:10px;max-width:min(560px,calc(100vw - 32px));
+  padding:12px 16px;border-radius:14px;background:var(--card-2);border:1px solid var(--line-2);box-shadow:var(--shadow);font-size:.88rem;transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast svg{margin-top:2px;color:#f59e0b}
+
+/* ============================================================ results */
+.results{padding:40px 0 20px;scroll-margin-top:70px}
+.res-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.eyebrow{font:500 .74rem "Geist Mono",monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--accent-ink)}
+h2{font-size:1.7rem;letter-spacing:-.03em;font-weight:600;margin-top:4px}
+.meta{color:var(--text-3);font-size:.86rem;margin-top:2px}
+.demo{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:2px 8px;border-radius:999px;background:var(--date-bg);color:var(--date);font-size:.74rem;font-weight:500;vertical-align:2px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text-2);font-size:.84rem;font-weight:500}
+.btn:hover{color:var(--text);border-color:var(--line-2)}
+
+.bento{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.card{position:relative;min-width:0;border-radius:var(--r);background:var(--card);box-shadow:var(--shadow);padding:18px 20px;overflow:hidden;isolation:isolate}
+.card::before{content:"";position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .3s;
+  background:radial-gradient(420px circle at var(--mx,50%) var(--my,0%),var(--glow),transparent 45%);mask:linear-gradient(#000,#000)}
+.card:hover::before{opacity:.35}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+h3{display:flex;align-items:center;gap:8px;font-size:.92rem;font-weight:500;color:var(--text-2)}
+h3 svg{color:var(--text-3)}
+.pill{padding:2px 8px;border-radius:999px;border:1px solid var(--line);font:500 .72rem "Geist Mono",monospace;color:var(--text-3)}
+.reveal{animation:up .5s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:calc(var(--d,0) * 60ms)}
+@keyframes up{from{opacity:0;transform:translateY(10px)}}
+
+/* stats */
+.stat .label{color:var(--text-2);font-size:.84rem;display:flex;align-items:center;gap:8px}
+.stat .val{font-size:2.2rem;font-weight:600;letter-spacing:-.04em;line-height:1.1;margin:10px 0 4px;font-variant-numeric:tabular-nums}
+.stat .val small{font-size:1rem;color:var(--text-3);font-weight:500;margin-left:2px}
+.stat .sub{font-size:.8rem;color:var(--text-3)}
+.mix{display:flex;height:6px;border-radius:99px;overflow:hidden;gap:2px;margin-top:12px;background:var(--card-2)}
+.mix span{display:block;height:100%}
+.spark{display:flex;align-items:flex-end;gap:3px;height:22px;margin-top:10px}
+.spark span{flex:1;border-radius:3px 3px 1px 1px;background:linear-gradient(var(--accent),var(--accent-2));opacity:.75;min-height:3px}
+
+/* colour helpers */
+.k-person{--c:var(--person);--cb:var(--person-bg)} .k-org{--c:var(--org);--cb:var(--org-bg)} .k-place{--c:var(--place);--cb:var(--place-bg)}
+.k-date{--c:var(--date);--cb:var(--date-bg)} .k-contact{--c:var(--contact);--cb:var(--contact-bg)} .k-money{--c:var(--money);--cb:var(--money-bg)}
+
+/* document */
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.lg{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-2);font-size:.76rem;transition:opacity .15s}
+.lg i{width:8px;height:8px;border-radius:3px;background:var(--c)}
+.lg[aria-pressed="false"]{opacity:.4;text-decoration:line-through}
+.doc{white-space:pre-wrap;overflow-wrap:anywhere;font-size:1.02rem;line-height:2.05;color:var(--text);max-height:420px;overflow:auto}
+mark{color:var(--c);background:var(--cb);padding:2px 5px;border-radius:6px;font-weight:500;box-decoration-break:clone;-webkit-box-decoration-break:clone;transition:box-shadow .15s,background .15s,color .15s}
+mark.off{background:transparent;color:inherit;font-weight:inherit;padding:0}
+mark.ping{box-shadow:0 0 0 2px var(--c)}
+
+/* entity groups */
+.groups{display:flex;flex-direction:column;gap:14px;max-height:300px;overflow:auto;margin-right:-6px;padding-right:6px}
+.group-h{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--text-2);margin-bottom:7px}
+.g-ic{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--cb);color:var(--c)}
+.g-ic svg{width:13px;height:13px}
+.group-h .pill{margin-left:auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;max-width:100%;padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card-2);font-size:.82rem;color:var(--text);text-align:left;overflow-wrap:anywhere}
+.chip:hover,.chip:focus-visible{border-color:var(--c);color:var(--c)}
+.empty{color:var(--text-3);font-size:.88rem}
+
+/* summary + keywords */
+.quote{position:relative;padding-left:16px;font-size:.98rem;line-height:1.7}
+.quote::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:3px;border-radius:3px;background:linear-gradient(var(--accent),var(--accent-2))}
+.note{margin-top:12px;font-size:.78rem;color:var(--text-3)}
+.cloud{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.cloud span{font-weight:500;letter-spacing:-.01em;line-height:1.2}
+.phrases{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+.phrases .chips .chip{color:var(--text-2)}
+
+/* donut */
+.donut-wrap{display:flex;align-items:center;gap:18px}
+.donut{width:128px;height:128px;flex-shrink:0;transform:rotate(-90deg)}
+.donut circle{fill:none;stroke-width:14}
+.donut-c{position:relative}
+.donut-n{position:absolute;inset:0;display:grid;place-items:center;text-align:center;line-height:1.1}
+.donut-n b{display:block;font-size:1.5rem;letter-spacing:-.03em}
+.donut-n small{color:var(--text-3);font-size:.72rem}
+.keys{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:.82rem;flex:1;min-width:0}
+.keys li{display:flex;align-items:center;gap:8px}
+.keys i{width:8px;height:8px;border-radius:3px;background:var(--c)}
+.keys b{margin-left:auto;font-weight:500;color:var(--text-2);font-variant-numeric:tabular-nums}
+
+/* output */
+.seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--card-2);border:1px solid var(--line)}
+.seg button{height:28px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:var(--text-3);font-size:.8rem;font-weight:500}
+.seg button[aria-selected="true"]{background:var(--card);color:var(--text);box-shadow:0 0 0 1px var(--line-2)}
+.code{margin:0;max-height:380px;overflow:auto;padding:14px 16px;border-radius:12px;background:var(--bg-2);border:1px solid var(--line);font-size:.8rem;line-height:1.65;color:var(--text-2)}
+.j-k{color:var(--accent-ink)} .j-s{color:var(--place)} .j-n{color:var(--date)}
+.tbl-wrap{max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th{position:sticky;top:0;background:var(--card-2);text-align:left;font-weight:500;color:var(--text-3);font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;padding:9px 14px;border-bottom:1px solid var(--line)}
+td{padding:9px 14px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+tr:last-child td{border-bottom:0}
+.tag{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--cb);color:var(--c);font-size:.74rem;font-weight:500;white-space:nowrap}
+.num{text-align:right;color:var(--text-3);font-variant-numeric:tabular-nums}
+
+/* accuracy */
+.bars{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.bars li{display:grid;grid-template-columns:96px minmax(0,1fr) 40px;align-items:center;gap:12px;font-size:.84rem;color:var(--text-2)}
+.bars b{text-align:right;font-weight:500;color:var(--text);font-variant-numeric:tabular-nums}
+.track{height:6px;border-radius:99px;background:var(--card-2);overflow:hidden}
+.track span{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--accent-2),var(--accent));transition:width 1s cubic-bezier(.2,.7,.2,1)}
+
+/* pipeline */
+.steps{list-style:none;margin:0 0 18px;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;counter-reset:s}
+.steps li{counter-increment:s;position:relative;padding:12px;border-radius:12px;background:var(--card-2);border:1px solid var(--line);font-size:.82rem}
+.steps li::before{content:counter(s,decimal-leading-zero);display:block;font:500 .7rem "Geist Mono",monospace;color:var(--accent-ink);margin-bottom:6px}
+.steps b{display:block;font-weight:500;color:var(--text);margin-bottom:2px}
+.steps code{font-size:.74rem;color:var(--text-3)}
+.sent-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.sent-tabs button{height:28px;min-width:34px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-3);font:500 .78rem "Geist Mono",monospace}
+.sent-tabs button[aria-selected="true"]{border-color:var(--accent);color:var(--accent-ink);background:var(--person-bg)}
+.sent{font-size:.95rem;color:var(--text-2);margin-bottom:12px}
+.toks{display:flex;flex-wrap:wrap;gap:6px}
+.tok{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:5px 9px;border-radius:9px;border:1px solid var(--line);background:var(--card-2)}
+.tok .w{font-size:.88rem}
+.tok .t{font:500 .66rem "Geist Mono",monospace;color:var(--text-3)}
+.pos-key{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:.76rem;color:var(--text-3)}
+.pos-key span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:6px;background:var(--c)}
+
+.doc.tags{line-height:3.05;padding-bottom:6px}
+mark{position:relative}
+.et{position:absolute;left:50%;top:calc(100% - 1px);transform:translateX(-50%);font:600 .54rem "Geist Mono",monospace;letter-spacing:.05em;color:var(--c);white-space:nowrap;pointer-events:none;line-height:1}
+.doc:not(.tags) .et,mark.off .et{display:none}
+.tgl{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-2);font-size:.76rem}
+.tgl[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-ink);background:var(--person-bg)}
+.doc-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
+
+/* pipeline flow */
+.flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.flow li{position:relative;padding:14px;border-radius:14px;background:var(--card-2);border:1px solid var(--line);min-width:0}
+.flow li:not(:last-child)::after{content:"";position:absolute;right:-9px;top:50%;width:7px;height:7px;border-top:1.5px solid var(--text-3);border-right:1.5px solid var(--text-3);transform:translateY(-50%) rotate(45deg);z-index:1}
+.flow .no{font:500 .68rem "Geist Mono",monospace;color:var(--accent-ink)}
+.flow .nm{font-weight:600;margin:4px 0 8px;font-size:.92rem}
+.flow .ct{font-size:1.65rem;font-weight:600;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.flow .un{font-size:.76rem;color:var(--text-3);margin-top:3px}
+.flow code{display:inline-block;margin-top:10px;padding:2px 7px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line);font-size:.7rem;color:var(--text-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flow-note{margin-top:12px;font-size:.8rem;color:var(--text-3)}
+
+/* POS */
+.k-noun{--c:var(--org);--cb:var(--org-bg)} .k-other{--c:var(--text-3);--cb:var(--card-2)}
+.tok{border-color:color-mix(in srgb,var(--c,var(--line)) 40%,transparent)}
+.tok .t{color:var(--c,var(--text-3))}
+.pos-tbl{margin-top:14px;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.pos-tbl td:first-child{font-weight:500}
+.pos-tbl .mean{color:var(--text-2)}
+.legend2{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:.76rem;color:var(--text-3)}
+.legend2 span{display:inline-flex;align-items:center;gap:6px}
+.legend2 i{width:8px;height:8px;border-radius:3px;background:var(--c)}
+
+/* how it works (results) */
+.hiw{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px;counter-reset:h}
+.hiw li{counter-increment:h;display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;font-size:.84rem;color:var(--text-2);line-height:1.5}
+.hiw li::before{content:counter(h);display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--person-bg);color:var(--accent-ink);font:600 .72rem "Geist Mono",monospace}
+.hiw code{display:block;margin-bottom:1px;color:var(--text);font-size:.8rem;font-weight:500}
+.hiw b{color:var(--text);font-weight:600}
+
+/* skeleton */
+.sk{border-radius:10px;background:linear-gradient(90deg,var(--card-2) 0%,var(--line) 50%,var(--card-2) 100%);background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* how it works (before results) */
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:30px 0 10px}
+.how .card p{color:var(--text-2);font-size:.88rem;margin-top:6px}
+.how .n{font:500 .72rem "Geist Mono",monospace;color:var(--accent-ink)}
+.how h3{color:var(--text);font-size:1rem;margin-top:10px}
+.demo-line{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+
+/* footer */
+.foot{margin-top:46px;padding:28px 0 40px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.foot p{color:var(--text-3);font-size:.84rem}
+.curl{margin:0;padding:10px 14px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:.76rem;color:var(--text-2);overflow-x:auto;max-width:100%}
+
+/* ============================================================ responsive */
+@media (max-width:1000px){
+  .c3{grid-column:span 6}.c4,.c5{grid-column:span 6}.c7,.c8{grid-column:span 12}
+  .flow{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .flow li:nth-child(3n)::after{display:none}
+  .links{display:none}
+}
+@media (max-width:720px){
+  .c4,.c5{grid-column:span 12}
+  .how{grid-template-columns:minmax(0,1fr)}
+  .foot{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .hero{padding:44px 0 24px}
+  .status .txt{display:none}
+  .bento{gap:10px}
+  .card{padding:16px}
+  .stat .val{font-size:1.7rem}
+  .flow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .flow li:nth-child(3n)::after{display:block}
+  .flow li:nth-child(2n)::after{display:none}
+  .flow .ct{font-size:1.4rem}
+  .samples-l{display:none}
+  .go .kbd{display:none}
+  .donut{width:104px;height:104px}
+  .bars li{grid-template-columns:84px minmax(0,1fr) 38px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
 </head>
 <body>
-  <header class="top">
-    <div class="wrap">
-      <h1>Information Extractor</h1>
-      <p class="tagline">Paste any English text and pull out people, places, organizations, dates, phone numbers, emails, money and more, using NLP with <strong>NLTK</strong>.</p>
+<div class="backdrop" aria-hidden="true"></div>
+<div class="glow-wrap" aria-hidden="true"><div class="glow"></div></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="logo" viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="18" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></symbol>
+  <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+  <symbol id="clip" viewBox="0 0 24 24"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.5 7"/></symbol>
+  <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/></symbol>
+  <symbol id="doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="8" cy="8" r="1.5"/></symbol>
+  <symbol id="quote" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="pie" viewBox="0 0 24 24"><path d="M21 12A9 9 0 1 1 12 3v9h9Z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15V3.5Z"/></symbol>
+  <symbol id="code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></symbol>
+  <symbol id="target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="flow" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="6" rx="1.5"/><rect x="14" y="15" width="7" height="6" rx="1.5"/><path d="M6.5 9v3.5a2 2 0 0 0 2 2h7a2 2 0 0 1 2 2V15"/></symbol>
+  <symbol id="copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+  <symbol id="hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+  <symbol id="bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></symbol>
+  <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="building" viewBox="0 0 24 24"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/></symbol>
+  <symbol id="pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="at" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></symbol>
+  <symbol id="coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 8h6M9 11h6M13 16l-4-5h1.5a3 3 0 0 0 0-6"/></symbol>
+</defs></svg>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top"><span class="mark"><svg class="i"><use href="#logo"/></svg></span>Extractor</a>
+    <nav class="links" aria-label="Sections">
+      <a href="#top">Analyze</a><a href="#results" id="nav-results">Results</a><a href="#pipeline">Pipeline</a><a href="#api">API</a>
+    </nav>
+    <div class="nav-right">
+      <span class="status" id="status" title="Checks whether the Flask server is reachable"><span class="dot"></span><span class="txt" id="status-txt">Checking engine…</span></span>
+      <button class="icon-btn" id="theme" type="button" aria-label="Toggle light and dark mode"><svg class="i t-dark"><use href="#sun"/></svg><svg class="i t-light"><use href="#moon"/></svg></button>
     </div>
-  </header>
+  </div>
+</header>
 
-  <main class="wrap">
-    <form method="post" class="panel input-panel" id="extract-form">
-      <label for="text" class="label">Your text</label>
-      <textarea id="text" name="text" rows="7" maxlength="100000"
-                placeholder="e.g. Rahul Sharma from Infosys will visit Bengaluru 560001 on 15 Nov 2026 at 10:30 am. Call +91 9876543210 or mail rahul.s@infosys.com. Fee is Rs. 2,500 with 18% GST.">{{ text }}</textarea>
-      <div class="row">
-        <div class="samples">
-          <span class="muted">Try:</span>
-          <button type="button" class="chip-btn" data-sample="0">Event notice</button>
-          <button type="button" class="chip-btn" data-sample="1">News</button>
-          <button type="button" class="chip-btn" data-sample="2">Order SMS</button>
+<main id="top">
+  <section class="wrap hero">
+    <span class="badge"><b>NLP</b>NLTK named-entity recognition + rules</span>
+    <h1>Turn messy text into <span class="grad">structured data.</span></h1>
+    <p class="lede">Paste a notice, news story or message. Get the people, organisations, places, dates, contacts and amounts in it, highlighted and exportable as JSON or CSV.</p>
+
+    <form class="composer" id="composer" method="post" action="/">
+      <div class="composer-in">
+        <label for="text" class="sr">Text to analyse</label>
+        <textarea id="text" name="text" maxlength="100000" placeholder="Paste any English text…  e.g. Rahul Sharma from Infosys will visit Bengaluru 560001 on 15 Nov 2026 at 10:30 am. Call +91 9876543210.">{{ text }}</textarea>
+        <div class="bar">
+          <button type="button" class="tool" id="attach" title="Load a .txt, .md or .csv file"><svg class="i"><use href="#clip"/></svg>Attach</button>
+          <input type="file" id="file" accept=".txt,.md,.csv,.text,text/plain" class="sr" tabindex="-1">
+          <span class="file-pill" id="file-pill" hidden><svg class="i"><use href="#doc"/></svg><span id="file-name"></span><button type="button" id="file-x" aria-label="Remove file"><svg class="i"><use href="#x"/></svg></button></span>
+          <span class="sep"></span>
+          <span class="samples-l" style="font-size:.8rem;color:var(--text-3)">Try</span>
+          <button type="button" class="tool" data-sample="0">Event notice</button>
+          <button type="button" class="tool" data-sample="1">News</button>
+          <button type="button" class="tool" data-sample="2">Order SMS</button>
+          <span class="count" id="count">0 chars</span>
+          <button type="submit" class="go" id="go"><span id="go-txt">Extract</span><span class="kbd" id="go-kbd">⌘↵</span><svg class="i" id="go-ic"><use href="#arrow"/></svg></button>
         </div>
-        <span class="muted" id="count">0 characters</span>
       </div>
-      <div class="actions">
-        <button type="submit" class="btn primary" id="submit-btn">Extract information</button>
-        <button type="button" class="btn" id="clear-btn">Clear</button>
-      </div>
+      <div class="drop-hint" aria-hidden="true"><span>Drop a .txt file to load it</span></div>
     </form>
+    <div class="under">
+      <span><svg class="i"><use href="#check"/></svg>Named-entity recognition</span>
+      <span><svg class="i"><use href="#check"/></svg>Dates, phones, emails, money</span>
+      <span><svg class="i"><use href="#check"/></svg>JSON &amp; CSV export</span>
+    </div>
+  </section>
 
-    {% if result is not none %}
-    {% set e = result.entities %}
-    {% set places = (e.get('GPE', []) + e.get('LOCATION', []) + e.get('GSP', [])) %}
-    {% set cards = [
-      ('People', 'person', e.get('PERSON', [])),
-      ('Organizations', 'org', e.get('ORGANIZATION', [])),
-      ('Places', 'place', places),
-      ('Facilities', 'place', e.get('FACILITY', [])),
-      ('Dates', 'date', result.dates),
-      ('Times', 'date', result.times),
-      ('Phone numbers', 'contact', result.phones),
-      ('Emails', 'contact', result.emails),
-      ('Links', 'contact', result.urls),
-      ('Money', 'money', result.money),
-      ('Percentages', 'money', result.percentages),
-      ('PIN codes', 'money', result.pin_codes),
-    ] %}
-    {% set found = cards | selectattr(2) | list %}
+  <section class="wrap how" id="how">
+    <div class="card"><span class="n">01</span><h3>Tokenise &amp; tag</h3><p><code>sent_tokenize</code>, <code>word_tokenize</code> and <code>pos_tag</code> split the text into sentences and words, then tag every word (NNP = proper noun).</p></div>
+    <div class="card"><span class="n">02</span><h3>Recognise entities</h3><p><code>ne_chunk</code> plus our own rules find people, organisations and places. The rules lift F1 from 0.35 to 0.93.</p></div>
+    <div class="card"><span class="n">03</span><h3>Phrases, keywords &amp; patterns</h3><p><code>RegexpParser</code> finds noun phrases, <code>FreqDist</code> ranks keywords, and regular expressions catch dates, phones, emails and amounts.</p></div>
+  </section>
 
-    <section class="results" id="results">
-      <div class="stats">
-        <span><b>{{ result.stats.characters }}</b> characters</span>
-        <span><b>{{ result.stats.sentences }}</b> sentences</span>
-        <span><b>{{ result.stats.tokens }}</b> tokens</span>
-        <span><b>{{ found | map(attribute=2) | map('length') | sum }}</b> items found</span>
-      </div>
-      {% if result.stats.truncated %}
-        <p class="notice">Your text was long, so only the first {{ result.stats.characters }} characters were analysed.</p>
-      {% endif %}
+  <section class="wrap results" id="results" hidden aria-live="polite"></section>
 
-      {% if result.stats.characters %}
-      <div class="panel">
-        <h2>Highlighted text</h2>
-        <div class="legend">
-          <span class="hl person">Person</span><span class="hl org">Organization</span>
-          <span class="hl place">Place</span><span class="hl date">Date / time</span>
-          <span class="hl contact">Contact</span><span class="hl money">Number</span>
-        </div>
-        <p class="highlighted" id="highlighted">{{ text }}</p>
-      </div>
-      {% endif %}
-
-      {% if found %}
-      <div class="grid">
-        {% for title, kind, items in found %}
-        <div class="card {{ kind }}">
-          <h3>{{ title }} <span class="count">{{ items | length }}</span></h3>
-          <ul class="chips">
-            {% for item in items %}<li>{{ item }}</li>{% endfor %}
-          </ul>
-        </div>
-        {% endfor %}
-      </div>
-      {% elif result.stats.characters %}
-      <p class="panel muted">No names, dates, contacts or numbers were found in this text. See the keywords and NLP steps below.</p>
-      {% endif %}
-
-      {% if result.keywords or result.noun_phrases %}
-      <div class="grid two">
-        {% if result.keywords %}
-        <div class="card plain">
-          <h3>Top keywords <span class="count">{{ result.keywords | length }}</span></h3>
-          <ul class="chips">{% for k in result.keywords %}<li>{{ k }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-        {% if result.noun_phrases %}
-        <div class="card plain">
-          <h3>Key phrases <span class="count">{{ result.noun_phrases | length }}</span></h3>
-          <ul class="chips">{% for p in result.noun_phrases[:30] %}<li>{{ p }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-      </div>
-      {% endif %}
-
-      {% if result.nlp_steps %}
-      <details class="panel steps">
-        <summary><h2>Show NLP steps</h2><span class="muted">sentence → tokens → POS tags</span></summary>
-        <ol class="pipeline">
-          <li><b>Sentence segmentation</b>: <code>sent_tokenize</code></li>
-          <li><b>Tokenization</b>: <code>word_tokenize</code></li>
-          <li><b>POS tagging</b>: <code>pos_tag</code></li>
-          <li><b>Named-entity recognition</b>: <code>ne_chunk</code> + rules</li>
-          <li><b>Noun-phrase chunking</b>: <code>RegexpParser</code></li>
-          <li><b>Keywords</b>: stopwords + <code>FreqDist</code></li>
-        </ol>
-        {% for step in result.nlp_steps[:50] %}
-        <div class="sentence">
-          <p class="sent-text"><span class="sent-no">{{ loop.index }}</span>{{ step.sentence }}</p>
-          <div class="tokens">
-            {% for word, tag in step.pos %}
-            <span class="tok" data-tag="{{ tag }}"><span class="w">{{ word }}</span><span class="t">{{ tag }}</span></span>
-            {% endfor %}
-          </div>
-        </div>
-        {% endfor %}
-        {% if result.nlp_steps | length > 50 %}
-          <p class="muted">Showing the first 50 of {{ result.nlp_steps | length }} sentences.</p>
-        {% endif %}
-      </details>
-      {% endif %}
-
-      <details class="panel">
-        <summary><h2>Raw JSON</h2><span class="muted">same as <code>POST /api/extract</code></span></summary>
-        <button type="button" class="btn small" id="copy-btn">Copy JSON</button>
-        <pre id="json">{{ result | tojson(indent=2) }}</pre>
-      </details>
-    </section>
-    <script type="application/json" id="result-data">{{ result | tojson }}</script>
-    {% endif %}
-  </main>
-
-  <footer class="wrap foot">
-    <p>Built with Python, Flask and NLTK · API: <code>POST /api/extract</code> with <code>{"text": "..."}</code></p>
+  <footer class="wrap foot" id="api">
+    <div>
+      <p><b style="color:var(--text);font-weight:600">Information Extractor</b> · Python, Flask &amp; NLTK</p>
+      <p>The same JSON is available from the API.</p>
+    </div>
+    <pre class="curl"><code>curl -X POST /api/extract -H "Content-Type: application/json" -d '{"text": "…"}'</code></pre>
   </footer>
+</main>
 
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+<div class="toast" id="toast" role="status"><svg class="i"><use href="#warn"/></svg><span id="toast-txt"></span></div>
+
+<script type="application/json" id="server-result">{% if result is not none %}{{ result | tojson }}{% else %}null{% endif %}</script>
+<script type="application/json" id="samples">[{"text":"Dayananda Sagar University is hosting its annual tech fest on 20th November, 2026 at 9:30 am. The chief guest is Dr. Kavitha Menon from ISRO. Registration costs Rs. 300 per team. Details are on www.dsu.edu.in, or write to fest@dsu.edu.in. Venue: Kumaraswamy Layout, Bengaluru 560078.","result":{"entities":{"ORGANIZATION":["Dayananda Sagar University","ISRO"],"PERSON":["Kavitha Menon"],"LOCATION":["Kumaraswamy Layout"],"GPE":["Bengaluru"]},"emails":["fest@dsu.edu.in"],"phones":[],"urls":["www.dsu.edu.in"],"dates":["20th November, 2026"],"times":["9:30 am"],"money":["Rs. 300"],"percentages":[],"pin_codes":["560078"],"noun_phrases":["Dayananda Sagar University","its annual tech","November","The chief guest","Dr. Kavitha Menon","ISRO","Registration costs Rs.","team","Details","www.dsu.edu.in","@ dsu.edu.in","Venue","Kumaraswamy Layout","Bengaluru"],"keywords":["fest","dayananda","sagar","university","hosting","annual","tech","chief","guest","kavitha"],"nlp_steps":[{"sentence":"Dayananda Sagar University is hosting its annual tech fest on 20th November, 2026 at 9:30 am.","tokens":["Dayananda","Sagar","University","is","hosting","its","annual","tech","fest","on","20th","November",",","2026","at","9:30","am","."],"pos":[["Dayananda","NNP"],["Sagar","NNP"],["University","NNP"],["is","VBZ"],["hosting","VBG"],["its","PRP$"],["annual","JJ"],["tech","NN"],["fest","JJS"],["on","IN"],["20th","CD"],["November","NNP"],[",",","],["2026","CD"],["at","IN"],["9:30","CD"],["am","VBP"],[".","."]]},{"sentence":"The chief guest is Dr. Kavitha Menon from ISRO.","tokens":["The","chief","guest","is","Dr.","Kavitha","Menon","from","ISRO","."],"pos":[["The","DT"],["chief","JJ"],["guest","NN"],["is","VBZ"],["Dr.","NNP"],["Kavitha","NNP"],["Menon","NNP"],["from","IN"],["ISRO","NNP"],[".","."]]},{"sentence":"Registration costs Rs. 300 per team.","tokens":["Registration","costs","Rs.","300","per","team","."],"pos":[["Registration","NN"],["costs","NNS"],["Rs.","NNP"],["300","CD"],["per","IN"],["team","NN"],[".","."]]},{"sentence":"Details are on www.dsu.edu.in, or write to fest@dsu.edu.in.","tokens":["Details","are","on","www.dsu.edu.in",",","or","write","to","fest","@","dsu.edu.in","."],"pos":[["Details","NNS"],["are","VBP"],["on","IN"],["www.dsu.edu.in","NN"],[",",","],["or","CC"],["write","VB"],["to","TO"],["fest","VB"],["@","JJ"],["dsu.edu.in","NN"],[".","."]]},{"sentence":"Venue: Kumaraswamy Layout, Bengaluru 560078.","tokens":["Venue",":","Kumaraswamy","Layout",",","Bengaluru","560078","."],"pos":[["Venue","NN"],[":",":"],["Kumaraswamy","NNP"],["Layout","NNP"],[",",","],["Bengaluru","NNP"],["560078","CD"],[".","."]]}],"stats":{"characters":283,"sentences":5,"tokens":55,"truncated":false}}},{"text":"Mumbai, 3 March 2026: Tata Motors reported a 14.5% rise in quarterly profit to ₹5,400 crore. Chief executive Shailesh Chandra said exports to the United Kingdom grew 22 percent.","result":{"entities":{"GPE":["Mumbai","United Kingdom"],"ORGANIZATION":["Tata Motors"],"PERSON":["Shailesh Chandra"]},"emails":[],"phones":[],"urls":[],"dates":["3 March 2026"],"times":[],"money":["₹5,400 crore"],"percentages":["14.5%","22 percent"],"pin_codes":[],"noun_phrases":["Mumbai","March","Tata Motors","% rise","quarterly profit","crore","Chief executive Shailesh Chandra","exports","the United Kingdom","percent"],"keywords":["mumbai","tata","motors","reported","rise","quarterly","profit","crore","chief","executive"],"nlp_steps":[{"sentence":"Mumbai, 3 March 2026: Tata Motors reported a 14.5% rise in quarterly profit to ₹5,400 crore.","tokens":["Mumbai",",","3","March","2026",":","Tata","Motors","reported","a","14.5","%","rise","in","quarterly","profit","to","₹5,400","crore","."],"pos":[["Mumbai","NNP"],[",",","],["3","CD"],["March","NNP"],["2026","CD"],[":",":"],["Tata","NN"],["Motors","NNS"],["reported","VBD"],["a","DT"],["14.5","CD"],["%","NN"],["rise","NN"],["in","IN"],["quarterly","JJ"],["profit","NN"],["to","TO"],["₹5,400","VB"],["crore","NN"],[".","."]]},{"sentence":"Chief executive Shailesh Chandra said exports to the United Kingdom grew 22 percent.","tokens":["Chief","executive","Shailesh","Chandra","said","exports","to","the","United","Kingdom","grew","22","percent","."],"pos":[["Chief","NNP"],["executive","NN"],["Shailesh","NNP"],["Chandra","NNP"],["said","VBD"],["exports","NNS"],["to","TO"],["the","DT"],["United","NNP"],["Kingdom","NNP"],["grew","VBD"],["22","CD"],["percent","NN"],[".","."]]}],"stats":{"characters":177,"sentences":2,"tokens":34,"truncated":false}}},{"text":"Order #40213 from Flipkart has shipped. Expected delivery: 13th November 2026 before 8 p.m. Deliver to Neha Gupta, 14 Park Street, Kolkata 700016. Amount paid: ₹2,349. Call 98300 12345 for help.","result":{"entities":{"ORGANIZATION":["Flipkart"],"PERSON":["Neha Gupta"],"LOCATION":["Park Street"],"GPE":["Kolkata"]},"emails":[],"phones":["98300 12345"],"urls":[],"dates":["13th November 2026"],"times":["8 p.m."],"money":["₹2,349"],"percentages":[],"pin_codes":["700016"],"noun_phrases":["Order","Flipkart","delivery","November","p.m","Deliver","Neha Gupta","Park Street","Kolkata","Amount","₹2,349","help"],"keywords":["order","flipkart","shipped","expected","delivery","deliver","neha","gupta","park","street"],"nlp_steps":[{"sentence":"Order #40213 from Flipkart has shipped.","tokens":["Order","#","40213","from","Flipkart","has","shipped","."],"pos":[["Order","NNP"],["#","#"],["40213","CD"],["from","IN"],["Flipkart","NNP"],["has","VBZ"],["shipped","VBN"],[".","."]]},{"sentence":"Expected delivery: 13th November 2026 before 8 p.m.","tokens":["Expected","delivery",":","13th","November","2026","before","8","p.m","."],"pos":[["Expected","VBN"],["delivery","NN"],[":",":"],["13th","CD"],["November","NNP"],["2026","CD"],["before","IN"],["8","CD"],["p.m","NN"],[".","."]]},{"sentence":"Deliver to Neha Gupta, 14 Park Street, Kolkata 700016.","tokens":["Deliver","to","Neha","Gupta",",","14","Park","Street",",","Kolkata","700016","."],"pos":[["Deliver","NNP"],["to","TO"],["Neha","NNP"],["Gupta","NNP"],[",",","],["14","CD"],["Park","NNP"],["Street","NNP"],[",",","],["Kolkata","NNP"],["700016","CD"],[".","."]]},{"sentence":"Amount paid: ₹2,349.","tokens":["Amount","paid",":","₹2,349","."],"pos":[["Amount","NNP"],["paid","VBD"],[":",":"],["₹2,349","NN"],[".","."]]},{"sentence":"Call 98300 12345 for help.","tokens":["Call","98300","12345","for","help","."],"pos":[["Call","VB"],["98300","CD"],["12345","CD"],["for","IN"],["help","NN"],[".","."]]}],"stats":{"characters":194,"sentences":5,"tokens":41,"truncated":false}}}]</script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var SAMPLES = JSON.parse($("samples").textContent);
+  var ICON = function (id) { return '<svg class="i"><use href="#' + id + '"/></svg>'; };
+
+  // Entity groups shown in the UI. Order = order in lists, legend and exports.
+  var GROUPS = [
+    { key: "person", label: "People", one: "Person", icon: "user" },
+    { key: "org", label: "Organisations", one: "Organisation", icon: "building" },
+    { key: "place", label: "Places", one: "Place", icon: "pin" },
+    { key: "date", label: "Dates & times", one: "Date / time", icon: "cal" },
+    { key: "contact", label: "Contacts", one: "Contact", icon: "at" },
+    { key: "money", label: "Numbers", one: "Number", icon: "coin" }
+  ];
+  // Measured by scripts/evaluate.py on the 15 labelled samples (README, "Accuracy").
+  var F1 = [["Person", 93], ["Organisation", 88], ["Place", 95], ["Dates & times", 100], ["Contacts", 100], ["Money & %", 100]];
+  var POS = { NN: "noun", NNS: "plural noun", NNP: "proper noun", NNPS: "plural proper noun", VB: "verb", VBD: "verb, past", VBG: "verb, -ing",
+    VBN: "verb, past participle", VBP: "verb, present", VBZ: "verb, 3rd person", JJ: "adjective", JJR: "comparative adjective", JJS: "superlative adjective",
+    RB: "adverb", IN: "preposition", DT: "determiner", CC: "conjunction", CD: "number", PRP: "pronoun", "PRP$": "possessive pronoun", MD: "modal verb",
+    TO: "to", WP: "wh-pronoun", WRB: "wh-adverb", POS: "possessive ending", ".": "sentence end", ",": "comma", ":": "colon", "$": "currency symbol", WDT: "wh-determiner", EX: "existential there", PDT: "predeterminer",
+    RP: "particle", RBR: "comparative adverb", RBS: "superlative adverb", UH: "interjection", FW: "foreign word", SYM: "symbol", "#": "hash sign",
+    "``": "opening quote", "''": "closing quote", "(": "opening bracket", ")": "closing bracket", LS: "list marker", "WP$": "possessive wh-pronoun" };
+  var POS_CAT = [["Proper noun", "person"], ["Noun", "noun"], ["Verb", "place"], ["Adjective / adverb", "date"], ["Preposition / conjunction", "contact"], ["Number", "money"], ["Other", "other"]];
+  function posCat(t) {
+    if (/^NNP/.test(t)) return "person"; if (/^NN/.test(t)) return "noun"; if (/^VB|^MD/.test(t)) return "place";
+    if (/^JJ|^RB/.test(t)) return "date"; if (/^(IN|CC|TO)$/.test(t)) return "contact"; if (t === "CD") return "money"; return "other";
+  }
+
+  var text = $("text"), form = $("composer"), go = $("go");
+  var serverOK = null, lastResult = null, lastText = "";
+
+  // ---------------------------------------------------------------- theme
+  $("theme").addEventListener("click", function () {
+    var r = document.documentElement;
+    var light = r.dataset.theme ? r.dataset.theme === "light" : window.matchMedia("(prefers-color-scheme: light)").matches;
+    r.dataset.theme = light ? "dark" : "light";
+    store.set("ie-theme", r.dataset.theme);
+  });
+
+  // ---------------------------------------------------------------- composer
+  if (text.value.indexOf("{" + "{") === 0) text.value = ""; // file opened directly, without Flask
+  var mac = /Mac|iPhone|iPad/.test(navigator.platform);
+  $("go-kbd").textContent = mac ? "⌘↵" : "Ctrl ↵";
+  function count() { var n = text.value.length; $("count").textContent = n.toLocaleString() + (n === 1 ? " char" : " chars"); }
+  text.addEventListener("input", count); count();
+  text.addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); } });
+  document.querySelectorAll("[data-sample]").forEach(function (b) {
+    b.addEventListener("click", function () { text.value = SAMPLES[+b.dataset.sample].text; clearFile(); count(); text.focus(); });
+  });
+
+  // file loading
+  var fileIn = $("file");
+  function clearFile() { $("file-pill").hidden = true; }
+  $("file-x").addEventListener("click", function () { clearFile(); text.value = ""; count(); text.focus(); });
+  $("attach").addEventListener("click", function () { fileIn.click(); });
+  fileIn.addEventListener("change", function () { loadFile(fileIn.files[0]); fileIn.value = ""; });
+  function loadFile(f) {
+    if (!f) return;
+    var n = f.name.toLowerCase();
+    if (/\.(pdf|docx?|rtf|odt|pages)$/.test(n)) return toast("PDF and Word files aren't supported yet. Copy the text and paste it in, or save it as .txt.");
+    if (!/\.(txt|md|csv|text)$/.test(n) && f.type.indexOf("text/") !== 0) return toast("Please choose a plain-text file (.txt, .md or .csv).");
+    if (f.size > 1048576) return toast("That file is over 1 MB. Please use a smaller file.");
+    var rd = new FileReader();
+    rd.onload = function () {
+      text.value = String(rd.result).slice(0, 100000); count();
+      $("file-name").textContent = f.name; $("file-pill").hidden = false;
+    };
+    rd.onerror = function () { toast("Couldn't read that file."); };
+    rd.readAsText(f);
+  }
+  var depth = 0;
+  form.addEventListener("dragenter", function (e) { e.preventDefault(); depth++; form.classList.add("drag"); });
+  form.addEventListener("dragover", function (e) { e.preventDefault(); });
+  form.addEventListener("dragleave", function () { if (--depth <= 0) { depth = 0; form.classList.remove("drag"); } });
+  form.addEventListener("drop", function (e) { e.preventDefault(); depth = 0; form.classList.remove("drag"); loadFile(e.dataTransfer.files[0]); });
+
+  // toast
+  var tt;
+  function toast(msg) { $("toast-txt").textContent = msg; $("toast").classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { $("toast").classList.remove("show"); }, 5200); }
+
+  // ---------------------------------------------------------------- engine status
+  var online = location.protocol.indexOf("http") === 0;
+  function setStatus(ok) {
+    serverOK = ok;
+    $("status").className = "status " + (ok ? "on" : "off");
+    $("status-txt").textContent = ok ? "Engine online" : "Demo mode";
+    $("status").title = ok ? "Connected to the Flask server" : "Server not reachable: samples show saved results. Run python app/app.py for live results.";
+  }
+  if (online) {
+    fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"text":""}' })
+      .then(function (r) { setStatus(r.ok); }, function () { setStatus(false); });
+  } else setStatus(false);
+
+  // ---------------------------------------------------------------- analyze
+  function busy(on) {
+    go.disabled = on;
+    $("go-txt").textContent = on ? "Extracting" : "Extract";
+    $("go-ic").outerHTML = on ? '<span class="spin" id="go-ic"></span>' : '<svg class="i" id="go-ic"><use href="#arrow"/></svg>';
+  }
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var t = text.value.trim();
+    if (!t) { toast("Paste some text or pick a sample first."); text.focus(); return; }
+    busy(true); skeleton();
+    var t0 = performance.now();
+    var fallback = function () {
+      var s = SAMPLES.filter(function (x) { return x.text.trim() === t; })[0];
+      busy(false);
+      if (s) { render(s.text, s.result, { demo: true }); }
+      else {
+        $("results").hidden = true; $("how").hidden = false;
+        toast("Can't reach the server. Start it with python app/app.py and open http://127.0.0.1:5000. Until then, only the samples work.");
+      }
+    };
+    if (!online || serverOK === false) return setTimeout(fallback, 450);
+    fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text.value }) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (res) { setStatus(true); busy(false); render(text.value, res, { ms: performance.now() - t0 }); })
+      .catch(function () { setStatus(false); fallback(); });
+  });
+
+  // ---------------------------------------------------------------- helpers
+  function groupsOf(res) {
+    var e = res.entities || {};
+    var lists = {
+      person: e.PERSON || [], org: e.ORGANIZATION || [],
+      place: [].concat(e.GPE || [], e.LOCATION || [], e.GSP || [], e.FACILITY || []),
+      date: [].concat(res.dates || [], res.times || []),
+      contact: [].concat(res.emails || [], res.phones || [], res.urls || []),
+      money: [].concat(res.money || [], res.percentages || [], res.pin_codes || [])
+    };
+    var sub = function (v) {
+      if ((res.emails || []).indexOf(v) > -1) return "Email"; if ((res.phones || []).indexOf(v) > -1) return "Phone"; if ((res.urls || []).indexOf(v) > -1) return "Link";
+      if ((res.times || []).indexOf(v) > -1) return "Time"; if ((res.dates || []).indexOf(v) > -1) return "Date";
+      if ((res.percentages || []).indexOf(v) > -1) return "Percentage"; if ((res.pin_codes || []).indexOf(v) > -1) return "PIN code"; if ((res.money || []).indexOf(v) > -1) return "Amount";
+      if ((e.FACILITY || []).indexOf(v) > -1) return "Facility";
+      return null;
+    };
+    var tagOf = function (v) { // NLTK label for named entities, our own label for pattern matches
+      var k, i, map = [["emails", "EMAIL"], ["phones", "PHONE"], ["urls", "URL"], ["times", "TIME"], ["dates", "DATE"], ["percentages", "PERCENT"], ["pin_codes", "PIN"], ["money", "MONEY"]];
+      for (k in e) if (e[k].indexOf(v) > -1) return k;
+      for (i = 0; i < map.length; i++) if ((res[map[i][0]] || []).indexOf(v) > -1) return map[i][1];
+      return "";
+    };
+    var items = [];
+    GROUPS.forEach(function (g) {
+      var seen = {};
+      lists[g.key].forEach(function (v) { if (v && !seen[v]) { seen[v] = 1; items.push({ g: g, v: v, type: sub(v) || g.one, tag: tagOf(v) }); } });
+    });
+    return items;
+  }
+  function occurrences(hay, needle) { var n = 0, i = 0; while ((i = hay.indexOf(needle, i)) !== -1) { n++; i += needle.length; } return n; }
+  function countUp(el, to, dec) {
+    if (reduced) { el.firstChild.nodeValue = to.toFixed(dec || 0); return; }
+    var t0 = performance.now(), dur = 700;
+    (function f(now) { var p = Math.min(1, (now - t0) / dur); p = 1 - Math.pow(1 - p, 3); el.firstChild.nodeValue = (to * p).toFixed(dec || 0); if (p < 1) requestAnimationFrame(f); })(t0);
+  }
+
+  function skeleton() {
+    var R = $("results");
+    $("how").hidden = true; R.hidden = false;
+    var b = '<div class="res-head"><div><div class="sk" style="width:90px;height:12px"></div><div class="sk" style="width:220px;height:28px;margin-top:10px"></div></div></div><div class="bento">';
+    ["c3", "c3", "c3", "c3", "c8", "c4"].forEach(function (c, i) { b += '<div class="card ' + c + '" style="height:' + (i < 4 ? 130 : 300) + 'px"><div class="sk" style="width:40%;height:14px"></div><div class="sk" style="width:70%;height:' + (i < 4 ? 30 : 16) + 'px;margin-top:16px"></div>' + (i >= 4 ? '<div class="sk" style="width:90%;height:16px;margin-top:12px"></div><div class="sk" style="width:60%;height:16px;margin-top:12px"></div>' : "") + "</div>"; });
+    R.innerHTML = b + "</div>";
+    R.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  }
+
+  // ---------------------------------------------------------------- render
+  function render(src, res, opt) {
+    opt = opt || {};
+    lastResult = res; lastText = src;
+    var R = $("results"), st = res.stats || {}, steps = res.nlp_steps || [];
+    var items = groupsOf(res);
+    var byGroup = GROUPS.map(function (g) { return { g: g, items: items.filter(function (it) { return it.g === g; }) }; });
+    var present = byGroup.filter(function (x) { return x.items.length; });
+    var d = 0, D = function () { return ' style="--d:' + (d++) + '"'; };
+    var h = "";
+
+    // header
+    h += '<div class="res-head reveal"' + D() + '><div><div class="eyebrow">Results</div><h2>' + items.length + " item" + (items.length === 1 ? "" : "s") + " extracted" +
+      (opt.demo ? '<span class="demo" title="The server is not running, so this is a saved result for the sample">Saved result</span>' : "") + "</h2>" +
+      '<p class="meta">' + (st.sentences || 0) + " sentence" + (st.sentences === 1 ? "" : "s") + " · " + (st.tokens || 0) + " tokens · " + (st.characters || 0).toLocaleString() + " characters" +
+      (st.truncated ? " · long text cut to the first 20,000 characters" : "") + "</p></div>" +
+      '<div class="actions"><button class="btn" data-act="copy">' + ICON("copy") + '<span>Copy JSON</span></button><button class="btn" data-act="json">' + ICON("down") + 'JSON</button><button class="btn" data-act="csv">' + ICON("down") + 'CSV</button><button class="btn" data-act="new">' + ICON("plus") + "New</button></div></div>";
+
+    h += '<div class="bento">';
+    // stats
+    var mix = present.map(function (x) { return '<span class="k-' + x.g.key + '" style="flex:' + x.items.length + ';background:var(--c)" title="' + x.g.label + ": " + x.items.length + '"></span>'; }).join("");
+    var spark = steps.slice(0, 24).map(function (s) { return (s.tokens || []).length; });
+    var maxT = Math.max.apply(null, spark.concat([1]));
+    h += stat("Entities found", "layers", items.length, "", present.length + " of 6 groups", '<div class="mix">' + (mix || "") + "</div>");
+    h += stat("Sentences", "doc", st.sentences || 0, "", "Split with sent_tokenize", '<div class="spark" title="Tokens per sentence">' + spark.map(function (n) { return '<span style="height:' + Math.max(12, n / maxT * 100) + '%"></span>'; }).join("") + "</div>");
+    h += stat("Tokens", "hash", st.tokens || 0, "", (res.keywords || []).length + " keywords · " + (res.noun_phrases || []).length + " phrases", "");
+    var ms = opt.ms;
+    h += stat("Response time", "bolt", ms == null ? 0 : (ms < 1000 ? Math.round(ms) : ms / 1000), ms == null ? "" : (ms < 1000 ? "ms" : "s"), ms == null ? (opt.demo ? "Saved result, not timed" : "Server-rendered") : "Round trip to the NLTK server", "", ms == null ? "—" : null, ms != null && ms >= 1000 ? 2 : 0);
+
+    // NLP pipeline with a count for every step
+    var nTok = 0, nTag = 0, kinds = {};
+    steps.forEach(function (s) { nTok += (s.tokens || []).length; (s.pos || []).forEach(function (p) { nTag++; kinds[p[1]] = 1; }); });
+    var nNer = 0, ek; for (ek in (res.entities || {})) nNer += res.entities[ek].length;
+    var nPat = items.filter(function (it) { return !(res.entities || {})[it.tag]; }).length;
+    var flow = [
+      ["Sentence split", steps.length, "sentences", "sent_tokenize"],
+      ["Tokenize", nTok, "tokens", "word_tokenize"],
+      ["POS tag", nTag, "tags · " + Object.keys(kinds).length + " kinds", "pos_tag"],
+      ["NER", nNer, "named entities", "ne_chunk + rules"],
+      ["Noun phrases", (res.noun_phrases || []).length, "phrases", "RegexpParser"],
+      ["Keywords", (res.keywords || []).length, "keywords", "FreqDist"]
+    ];
+    h += '<div class="card c12 reveal" id="pipeline"' + D() + '><div class="card-h"><h3>' + ICON("flow") + 'NLP pipeline</h3><span class="pill">6 steps</span></div><ol class="flow">' +
+      flow.map(function (f, i) { return '<li><div class="no">0' + (i + 1) + '</div><div class="nm">' + f[0] + '</div><div class="ct" data-to="' + f[1] + '">0</div><div class="un">' + f[2] + "</div><code>" + f[3] + "</code></li>"; }).join("") +
+      '</ol><p class="flow-note">Each step feeds the next one. Separately, regular expressions matched ' + nPat + " fixed-format item" + (nPat === 1 ? "" : "s") + " (dates, times, phones, emails, links, amounts).</p></div>";
+
+    // document
+    h += '<div class="card c8 reveal"' + D() + '><div class="card-h"><h3>' + ICON("doc") + 'Document</h3><div class="doc-tools"><button type="button" class="tgl" id="tag-tgl" aria-pressed="true">Entity tags</button><div class="legend" id="legend">' +
+      GROUPS.map(function (g) { return '<button type="button" class="lg k-' + g.key + '" aria-pressed="true" data-k="' + g.key + '"><i></i>' + g.label + "</button>"; }).join("") +
+      '</div></div></div><div class="doc tags" id="doc">' + highlight(src, items) + "</div></div>";
+
+    // entities
+    h += '<div class="card c4 reveal"' + D() + '><div class="card-h"><h3>' + ICON("grid") + 'Entities</h3><span class="pill">' + items.length + "</span></div>";
+    h += present.length ? '<div class="groups">' + present.map(function (x) {
+      return '<div class="k-' + x.g.key + '"><div class="group-h"><span class="g-ic">' + ICON(x.g.icon) + "</span>" + x.g.label + '<span class="pill">' + x.items.length + '</span></div><div class="chips">' +
+        x.items.map(function (it) { return '<button type="button" class="chip" data-v="' + esc(it.v) + '" title="' + esc(it.type) + ' · click to copy">' + esc(it.v) + "</button>"; }).join("") + "</div></div>";
+    }).join("") + "</div>" : '<p class="empty">No names, places, dates, contacts or numbers were found in this text.</p>';
+    h += "</div>";
+
+    // POS tagging per sentence
+    if (steps.length) {
+      h += '<div class="card c8 reveal" id="pos"' + D() + '><div class="card-h"><h3>' + ICON("hash") + 'Part-of-speech tags</h3><span class="pill">pos_tag</span></div>' +
+        '<div class="sent-tabs" role="tablist" id="sent-tabs" aria-label="Sentence">' + steps.slice(0, 40).map(function (s, i) { return '<button role="tab" aria-selected="' + (i === 0) + '" data-i="' + i + '">S' + (i + 1) + "</button>"; }).join("") + "</div>" +
+        '<div id="sent-view"></div><div class="legend2">' + POS_CAT.map(function (c) { return '<span class="k-' + c[1] + '"><i></i>' + c[0] + "</span>"; }).join("") + "</div>" +
+        (steps.length > 40 ? '<p class="note">Showing the first 40 of ' + steps.length + " sentences.</p>" : "") + "</div>";
+    }
+
+    // how it works
+    h += '<div class="card c4 reveal"' + D() + '><div class="card-h"><h3>' + ICON("layers") + 'How it works</h3><span class="pill">NLTK</span></div><ol class="hiw">' +
+      "<li><div><code>nltk.sent_tokenize</code>The Punkt model split the text into <b>" + steps.length + "</b> sentence" + (steps.length === 1 ? "" : "s") + ".</div></li>" +
+      "<li><div><code>nltk.word_tokenize</code>Treebank rules split those into <b>" + nTok + "</b> tokens.</div></li>" +
+      "<li><div><code>nltk.pos_tag</code>The perceptron tagger gave every token a Penn Treebank tag (<b>" + Object.keys(kinds).length + "</b> kinds used).</div></li>" +
+      "<li><div><code>nltk.ne_chunk</code>The classifier marked names, then our rules fixed them: <b>" + nNer + "</b> named entities.</div></li>" +
+      "<li><div><code>nltk.RegexpParser</code>The grammar <span class=\"mono\" style=\"font-size:.74rem\">NP: {&lt;DT|PRP$&gt;?&lt;JJ.*&gt;*&lt;NN.*&gt;+}</span> found <b>" + (res.noun_phrases || []).length + "</b> noun phrases.</div></li>" +
+      "<li><div><code>stopwords + nltk.FreqDist</code>Common words were removed and the rest counted: top <b>" + (res.keywords || []).length + "</b> keywords.</div></li>" +
+      "<li><div><code>re (regular expressions)</code>Patterns matched <b>" + nPat + "</b> dates, phones, emails and amounts.</div></li>" +
+      "</ol></div>";
+
+    // key sentences
+    h += '<div class="card c4 reveal"' + D() + '><div class="card-h"><h3>' + ICON("quote") + "Key sentences</h3></div>" + summary(steps, res.keywords || [], items) + "</div>";
+
+    // keywords
+    var kw = res.keywords || [];
+    h += '<div class="card c4 reveal"' + D() + '><div class="card-h"><h3>' + ICON("tag") + 'Keywords</h3><span class="pill">' + kw.length + "</span></div>";
+    h += kw.length ? '<div class="cloud">' + kw.map(function (k, i) { var w = 1 - i / Math.max(kw.length, 1); return '<span style="font-size:' + (0.86 + w * 0.72).toFixed(2) + "rem;color:color-mix(in srgb,var(--text) " + Math.round(45 + w * 55) + '%,transparent)">' + esc(k) + "</span>"; }).join("") + "</div>" : '<p class="empty">No keywords.</p>';
+    if ((res.noun_phrases || []).length) h += '<div class="phrases"><div class="group-h">Key phrases</div><div class="chips">' + res.noun_phrases.slice(0, 10).map(function (p) { return '<span class="chip">' + esc(p) + "</span>"; }).join("") + "</div></div>";
+    h += "</div>";
+
+    // donut
+    h += '<div class="card c4 reveal"' + D() + '><div class="card-h"><h3>' + ICON("pie") + "Entity mix</h3></div>" + donut(byGroup, items.length) + "</div>";
+
+    // output
+    h += '<div class="card c8 reveal"' + D() + '><div class="card-h"><h3>' + ICON("code") + 'Structured output</h3><div class="seg" role="tablist" id="seg">' +
+      '<button role="tab" aria-selected="true" data-view="json">JSON</button><button role="tab" aria-selected="false" data-view="table">Table</button><button role="tab" aria-selected="false" data-view="csv">CSV</button></div></div>' +
+      '<pre class="code" id="v-json">' + colorJSON(JSON.stringify(compact(res), null, 2)) + "</pre>" +
+      '<div class="tbl-wrap" id="v-table" hidden>' + (items.length ? "<table><thead><tr><th>Entity</th><th>Type</th><th class=\"num\">In text</th></tr></thead><tbody>" +
+        items.map(function (it) { return '<tr class="k-' + it.g.key + '"><td>' + esc(it.v) + '</td><td><span class="tag">' + esc(it.type) + '</span></td><td class="num">' + Math.max(1, occurrences(src, it.v)) + "×</td></tr>"; }).join("") + "</tbody></table>" : '<p class="empty" style="padding:14px">Nothing to show.</p>') + "</div>" +
+      '<pre class="code" id="v-csv" hidden>' + esc(csv(items, kw)) + "</pre></div>";
+
+    // accuracy
+    h += '<div class="card c4 reveal"' + D() + '><div class="card-h"><h3>' + ICON("target") + 'Model accuracy</h3><span class="pill">F1</span></div><ul class="bars">' +
+      F1.map(function (f) { return "<li><span>" + f[0] + '</span><span class="track"><span data-w="' + f[1] + '"></span></span><b>' + f[1] + "%</b></li>"; }).join("") +
+      '</ul><p class="note">Measured on 15 hand-labelled texts that were also used to tune the rules, so real-world accuracy will be lower.</p></div>';
+
+    h += "</div>";
+
+    $("how").hidden = true;
+    R.hidden = false;
+    R.innerHTML = h;
+    wire(steps);
+    R.querySelectorAll(".stat .val[data-to], .flow .ct[data-to]").forEach(function (el) { countUp(el, +el.dataset.to, +el.dataset.dec || 0); });
+    setTimeout(function () { R.querySelectorAll(".track span").forEach(function (s) { s.style.width = s.dataset.w + "%"; }); }, 200);
+    R.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  }
+
+  function stat(label, icon, val, unit, sub, extra, fixed, dec) {
+    return '<div class="card c3 stat reveal"><div class="label">' + ICON(icon) + label + '</div><div class="val"' + (fixed ? "" : ' data-to="' + val + '" data-dec="' + (dec || 0) + '"') + ">" +
+      (fixed || "0") + (unit ? "<small>" + unit + "</small>" : "") + '</div><div class="sub">' + sub + "</div>" + extra + "</div>";
+  }
+
+  function highlight(src, items) {
+    var owner = new Array(src.length).fill(null);
+    items.slice().sort(function (a, b) { return b.v.length - a.v.length; }).forEach(function (it) {
+      var from = 0, at;
+      while ((at = src.indexOf(it.v, from)) !== -1) {
+        var free = true, i;
+        for (i = at; i < at + it.v.length; i++) if (owner[i]) { free = false; break; }
+        if (free) for (i = at; i < at + it.v.length; i++) owner[i] = it;
+        from = at + it.v.length;
+      }
+    });
+    var out = "", k = 0;
+    while (k < src.length) {
+      var o = owner[k], end = k;
+      while (end < src.length && owner[end] === o) end++;
+      var part = esc(src.slice(k, end));
+      out += o ? '<mark class="k-' + o.g.key + '" data-k="' + o.g.key + '" data-v="' + esc(o.v) + '" title="' + esc(o.tag + " · " + o.type) + '">' + part + '<span class="et" aria-hidden="true">' + esc(o.tag) + "</span></mark>" : part;
+      k = end;
+    }
+    return out;
+  }
+
+  function summary(steps, kw, items) {
+    if (!steps.length) return '<p class="empty">Nothing to summarise.</p>';
+    var rank = {}; kw.forEach(function (w, i) { rank[w.toLowerCase()] = kw.length - i; });
+    var scored = steps.map(function (s, i) {
+      var sc = 0;
+      (s.tokens || []).forEach(function (t) { sc += rank[t.toLowerCase()] || 0; });
+      items.forEach(function (it) { if (s.sentence.indexOf(it.v) > -1) sc += 3; });
+      return { i: i, s: s.sentence, sc: sc / Math.sqrt(Math.max(4, (s.tokens || []).length)) };
+    });
+    var keep = steps.length > 6 ? 3 : 2;
+    var top = scored.slice().sort(function (a, b) { return b.sc - a.sc; }).slice(0, keep).sort(function (a, b) { return a.i - b.i; });
+    var note = steps.length <= keep ? "The text is short, so every sentence is shown." : "The " + top.length + " of " + steps.length + " sentences that contain the most keywords and entities, in their original order.";
+    return '<p class="quote">' + esc(top.map(function (t) { return t.s; }).join(" ")) + '</p><p class="note">' + note + "</p>";
+  }
+
+  function donut(byGroup, total) {
+    var r = 50, C = 2 * Math.PI * r, off = 0, arcs = "";
+    if (total) byGroup.forEach(function (x) {
+      if (!x.items.length) return;
+      var len = x.items.length / total * C;
+      arcs += '<circle class="k-' + x.g.key + '" cx="64" cy="64" r="' + r + '" style="stroke:var(--c)" stroke-dasharray="' + Math.max(0, len - 2.5) + " " + C + '" stroke-dashoffset="' + (-off) + '"></circle>';
+      off += len;
+    });
+    return '<div class="donut-wrap"><div class="donut-c"><svg class="donut" viewBox="0 0 128 128" role="img" aria-label="Share of each entity group"><circle cx="64" cy="64" r="' + r + '" style="stroke:var(--card-2)"></circle>' + arcs + '</svg><div class="donut-n"><div><b>' + total + "</b><small>items</small></div></div></div>" +
+      '<ul class="keys">' + byGroup.map(function (x) { return '<li class="k-' + x.g.key + '"' + (x.items.length ? "" : ' style="opacity:.4"') + "><i></i>" + x.g.label + "<b>" + x.items.length + "</b></li>"; }).join("") + "</ul></div>";
+  }
+
+  function compact(res) { // only keys with results, in reading order
+    var out = {}, e = {}, k;
+    for (k in (res.entities || {})) if (res.entities[k].length) e[k] = res.entities[k];
+    if (Object.keys(e).length) out.entities = e;
+    ["dates", "times", "emails", "phones", "urls", "money", "percentages", "pin_codes", "keywords"].forEach(function (key) { if ((res[key] || []).length) out[key] = res[key]; });
+    return out;
+  }
+  function colorJSON(s) {
+    return esc(s).replace(/(&quot;(?:\\.|(?!&quot;)[^\\])*?&quot;)(\s*:)?|\b(-?\d+(?:\.\d+)?|true|false|null)\b/g, function (m, str, colon, lit) {
+      if (str) return '<span class="' + (colon ? "j-k" : "j-s") + '">' + str + "</span>" + (colon || "");
+      return '<span class="j-n">' + lit + "</span>";
+    });
+  }
+  function csv(items, kw) {
+    var cell = function (v) { v = String(v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
+    var rows = [["group", "type", "value"]].concat(items.map(function (it) { return [it.g.label, it.type, it.v]; }));
+    kw.forEach(function (k) { rows.push(["Keywords", "Keyword", k]); });
+    return rows.map(function (r) { return r.map(cell).join(","); }).join("\r\n");
+  }
+  function download(name, type, data) {
+    var url = URL.createObjectURL(new Blob([data], { type: type })), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function copy(str, btn) {
+    var done = function () { if (!btn) return; var old = btn.innerHTML; btn.innerHTML = ICON("check") + "<span>Copied</span>"; setTimeout(function () { btn.innerHTML = old; }, 1400); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(str).then(done, function () {});
+    else { var ta = document.createElement("textarea"); ta.value = str; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) {} ta.remove(); }
+  }
+
+  function wire(steps) {
+    var R = $("results");
+    // actions
+    R.querySelector(".actions").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-act]"); if (!b) return;
+      var a = b.dataset.act, items = groupsOf(lastResult);
+      if (a === "copy") copy(JSON.stringify(lastResult, null, 2), b);
+      if (a === "json") download("extraction.json", "application/json", JSON.stringify(lastResult, null, 2));
+      if (a === "csv") download("extraction.csv", "text/csv", "﻿" + csv(items, lastResult.keywords || []));
+      if (a === "new") { text.value = ""; count(); clearFile(); window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" }); setTimeout(function () { text.focus(); }, 300); }
+    });
+    // entity tags under highlighted words
+    $("tag-tgl").addEventListener("click", function () {
+      var on = this.getAttribute("aria-pressed") !== "true";
+      this.setAttribute("aria-pressed", on);
+      $("doc").classList.toggle("tags", on);
+    });
+    // legend toggles
+    $("legend").addEventListener("click", function (e) {
+      var b = e.target.closest(".lg"); if (!b) return;
+      var on = b.getAttribute("aria-pressed") !== "true";
+      b.setAttribute("aria-pressed", on);
+      R.querySelectorAll('mark[data-k="' + b.dataset.k + '"]').forEach(function (m) { m.classList.toggle("off", !on); });
+    });
+    // chip hover -> ping marks; click -> copy
+    var groups = R.querySelector(".groups");
+    if (groups) {
+      var ping = function (v, on) { R.querySelectorAll("mark").forEach(function (m) { if (m.dataset.v === v) m.classList.toggle("ping", on); }); };
+      ["mouseover", "focusin"].forEach(function (t) { groups.addEventListener(t, function (e) { var c = e.target.closest(".chip"); if (c) ping(c.dataset.v, true); }); });
+      ["mouseout", "focusout"].forEach(function (t) { groups.addEventListener(t, function (e) { var c = e.target.closest(".chip"); if (c) ping(c.dataset.v, false); }); });
+      groups.addEventListener("click", function (e) { var c = e.target.closest(".chip"); if (c) { copy(c.dataset.v); toastOK("Copied “" + c.dataset.v + "”"); } });
+    }
+    // output tabs
+    $("seg").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      $("seg").querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", x === b); });
+      ["json", "table", "csv"].forEach(function (v) { $("v-" + v).hidden = v !== b.dataset.view; });
+    });
+    // pipeline sentences
+    var tabs = $("sent-tabs");
+    if (tabs) {
+      var show = function (i) {
+        var s = steps[i];
+        var pos = s.pos || [];
+        $("sent-view").innerHTML = '<p class="sent">' + esc(s.sentence) + '</p><div class="toks">' + pos.map(function (p) {
+          return '<span class="tok k-' + posCat(p[1]) + '" title="' + esc(p[1] + (POS[p[1]] ? " = " + POS[p[1]] : "")) + '"><span class="w">' + esc(p[0]) + '</span><span class="t">' + esc(p[1]) + "</span></span>";
+        }).join("") + '</div><div class="pos-tbl"><table><thead><tr><th>#</th><th>Token</th><th>Tag</th><th>Meaning</th></tr></thead><tbody>' + pos.map(function (p, i) {
+          return '<tr class="k-' + posCat(p[1]) + '"><td class="num" style="text-align:left">' + (i + 1) + "</td><td>" + esc(p[0]) + '</td><td><span class="tag mono">' + esc(p[1]) + '</span></td><td class="mean">' + esc(POS[p[1]] || "other") + "</td></tr>";
+        }).join("") + "</tbody></table></div>";
+      };
+      tabs.addEventListener("click", function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        tabs.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", x === b); });
+        show(+b.dataset.i);
+      });
+      show(0);
+    }
+    // spotlight
+    R.querySelectorAll(".card").forEach(function (c) {
+      c.addEventListener("pointermove", function (e) { var r = c.getBoundingClientRect(); c.style.setProperty("--mx", (e.clientX - r.left) + "px"); c.style.setProperty("--my", (e.clientY - r.top) + "px"); });
+    });
+  }
+  function toastOK(msg) { $("toast").querySelector("svg").style.color = "var(--place)"; toast(msg); setTimeout(function () { $("toast").querySelector("svg").style.color = ""; }, 5300); }
+
+  // result rendered by Flask after a plain form POST (no-JS fallback path)
+  try {
+    var sr = JSON.parse($("server-result").textContent);
+    if (sr && text.value) render(text.value, sr, {});
+  } catch (e) { /* opened without Flask */ }
+})();
+</script>
 </body>
 </html>
