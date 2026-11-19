@@ -260,8 +260,9 @@ tr:last-child td{border-bottom:0}
 
 .doc.tags{line-height:3.05;padding-bottom:6px}
 mark{position:relative}
-.et{position:absolute;left:50%;top:calc(100% - 1px);transform:translateX(-50%);font:600 .54rem "Geist Mono",monospace;letter-spacing:.05em;color:var(--c);white-space:nowrap;pointer-events:none;line-height:1}
+.et{position:absolute;left:5px;top:calc(100% - 1px);font:600 .54rem "Geist Mono",monospace;letter-spacing:.05em;color:var(--c);white-space:nowrap;pointer-events:none;line-height:1}
 .doc:not(.tags) .et,mark.off .et{display:none}
+.pbr{display:block;height:10px}
 .tgl{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-2);font-size:.76rem}
 .tgl[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-ink);background:var(--person-bg)}
 .doc-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
@@ -592,16 +593,21 @@ mark{position:relative}
       if ((e.FACILITY || []).indexOf(v) > -1) return "Facility";
       return null;
     };
-    var tagOf = function (v) { // NLTK label for named entities, our own label for pattern matches
-      var k, i, map = [["emails", "EMAIL"], ["phones", "PHONE"], ["urls", "URL"], ["times", "TIME"], ["dates", "DATE"], ["percentages", "PERCENT"], ["pin_codes", "PIN"], ["money", "MONEY"]];
-      for (k in e) if (e[k].indexOf(v) > -1) return k;
+    // Label shown under a word. Named entities use NLTK's label for the group the word is in,
+    // so the tag always matches the colour. Pattern matches use our own label.
+    var NER_OF = { person: ["PERSON"], org: ["ORGANIZATION"], place: ["GPE", "LOCATION", "GSP", "FACILITY"] };
+    var SHORT = { ORGANIZATION: "ORG", LOCATION: "LOC", FACILITY: "FAC" };
+    var tagOf = function (v, gk) {
+      var i, map = [["emails", "EMAIL"], ["phones", "PHONE"], ["urls", "URL"], ["times", "TIME"], ["dates", "DATE"], ["percentages", "PERCENT"], ["pin_codes", "PIN"], ["money", "MONEY"]];
+      var own = NER_OF[gk] || [];
+      for (i = 0; i < own.length; i++) if ((e[own[i]] || []).indexOf(v) > -1) return own[i];
       for (i = 0; i < map.length; i++) if ((res[map[i][0]] || []).indexOf(v) > -1) return map[i][1];
       return "";
     };
-    var items = [];
+    var items = [], taken = {}; // a string the engine put in two groups is shown once, in the first group
     GROUPS.forEach(function (g) {
-      var seen = {};
-      lists[g.key].forEach(function (v) { if (v && !seen[v]) { seen[v] = 1; items.push({ g: g, v: v, type: sub(v) || g.one, tag: tagOf(v) }); } });
+      var seen = taken;
+      lists[g.key].forEach(function (v) { if (v && !seen[v]) { seen[v] = 1; var tg = tagOf(v, g.key); items.push({ g: g, v: v, type: sub(v) || g.one, tag: tg, short: SHORT[tg] || tg }); } });
     });
     return items;
   }
@@ -653,8 +659,8 @@ mark{position:relative}
     // NLP pipeline with a count for every step
     var nTok = 0, nTag = 0, kinds = {};
     steps.forEach(function (s) { nTok += (s.tokens || []).length; (s.pos || []).forEach(function (p) { nTag++; kinds[p[1]] = 1; }); });
-    var nNer = 0, ek; for (ek in (res.entities || {})) nNer += res.entities[ek].length;
-    var nPat = items.filter(function (it) { return !(res.entities || {})[it.tag]; }).length;
+    var nNer = items.filter(function (it) { return ["person", "org", "place"].indexOf(it.g.key) > -1; }).length;
+    var nPat = items.filter(function (it) { return ["person", "org", "place"].indexOf(it.g.key) < 0; }).length;
     var flow = [
       ["Sentence split", steps.length, "sentences", "sent_tokenize"],
       ["Tokenize", nTok, "tokens", "word_tokenize"],
@@ -757,10 +763,10 @@ mark{position:relative}
       var o = owner[k], end = k;
       while (end < src.length && owner[end] === o) end++;
       var part = esc(src.slice(k, end));
-      out += o ? '<mark class="k-' + o.g.key + '" data-k="' + o.g.key + '" data-v="' + esc(o.v) + '" title="' + esc(o.tag + " · " + o.type) + '">' + part + '<span class="et" aria-hidden="true">' + esc(o.tag) + "</span></mark>" : part;
+      out += o ? '<mark class="k-' + o.g.key + '" data-k="' + o.g.key + '" data-v="' + esc(o.v) + '" title="' + esc(o.tag + " · " + o.type) + '">' + part + '<span class="et" aria-hidden="true">' + esc(o.short) + "</span></mark>" : part;
       k = end;
     }
-    return out;
+    return out.replace(/[ \t]*\n[ \t]*\n[\s]*/g, '<span class="pbr"></span>');
   }
 
   function summary(steps, kw, items) {
