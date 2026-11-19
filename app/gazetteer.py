@@ -28,7 +28,38 @@ PLACES = {
     "Brazil", "England", "America", "USA", "U.S.", "United States", "UK", "United Kingdom",
     "UAE", "Dubai", "London", "Paris", "Tokyo", "New York", "Sydney", "Toronto", "Berlin",
     "San Francisco", "Seattle", "Boston", "Chicago",
+    # Pilgrimage and heritage places, rivers and mountains
+    "Ayodhya", "Mathura", "Vrindavan", "Kashi", "Haridwar", "Rishikesh", "Badrinath", "Kedarnath",
+    "Puri", "Dwarka", "Somnath", "Amarnath", "Shirdi", "Sabarimala", "Rameswaram",
+    "Kanyakumari", "Bodh Gaya", "Hampi", "Ooty", "Manali", "Leh", "Darjeeling", "Gangtok",
+    "Kohima", "Aizawl", "Agartala", "Itanagar", "Panaji", "Moirang", "Himalayas", "Ganga",
+    "Ganges", "Yamuna", "Brahmaputra", "Godavari", "Kaveri", "Narmada", "Indus", "Saraswati River",
 }
+
+# Gods, goddesses and epic characters are people for this project ("Lord Shiva" -> PERSON).
+DEITIES = {
+    "shiva", "parvati", "vishnu", "lakshmi", "brahma", "saraswati", "ganesha", "ganesh",
+    "ganapati", "krishna", "radha", "rama", "ram", "sita", "lakshmana", "bharata", "hanuman",
+    "ravana", "durga", "kali", "murugan", "kartikeya", "ayyappa", "indra", "surya", "agni",
+    "varuna", "vayu", "buddha", "mahavira", "arjuna", "bhima", "yudhishthira", "draupadi",
+    "karna", "kunti", "bhishma", "valmiki", "vyasa", "jesus", "guru nanak", "pakhangba",
+    "sanamahi", "leimarel",
+}
+
+# Honorifics that are part of how a name is used. They mark a PERSON and are KEPT in the name.
+HONORIFICS = {
+    "lord", "god", "goddess", "sri", "shri", "sant", "saint", "swami", "guru", "mahatma",
+    "maharaja", "maharani", "raja", "rani", "king", "queen", "prince", "princess", "emperor",
+    "bhagwan", "devi", "acharya", "pandit",
+}
+
+# "Mount Kailash", "Lake Loktak", "River Ganga", "Fort William" -> place.
+PLACE_PREFIXES = {"mount", "mt", "lake", "river", "fort", "port", "cape", "gulf", "bay", "isle"}
+
+# A lower-case noun right after a name makes it a place: "the Ganga river", "Puri temple".
+PLACE_NOUNS = {"river", "lake", "mountain", "mountains", "hill", "hills", "temple", "city", "town",
+               "village", "district", "state", "valley", "fort", "beach", "island", "airport",
+               "station", "palace"}
 
 KNOWN_ORGS = {
     "Infosys", "Wipro", "TCS", "HCL", "Tata", "Accenture", "Cognizant", "Capgemini", "Deloitte",
@@ -55,11 +86,16 @@ PLACE_WORDS = {
     "nagar", "layout", "road", "street", "marg", "colony", "city", "hills", "park", "lake",
     "river", "beach", "fort", "valley", "island", "district", "village", "town", "sector",
     "market", "circle", "puram", "halli", "palya", "bazaar", "chowk", "ganj", "pur", "abad",
-    "mountains", "falls", "sanctuary",
+    "mountains", "falls", "sanctuary", "temple", "mandir", "mosque", "masjid", "church",
+    "cathedral", "gurudwara", "monastery", "stadium", "airport", "station", "palace", "ghat",
+    "ashram", "dam", "mountain", "peak", "ocean", "sea", "desert", "forest", "glacier",
 }
 
 # Titles mark the next words as a person's name. The title itself is not kept.
-TITLES = {"mr", "mrs", "ms", "miss", "dr", "prof", "shri", "sri", "smt", "kumari"}
+TITLES = {"mr", "mrs", "ms", "miss", "dr", "prof", "smt", "kumari"}
+
+# Greeting words: "Dear Arjun," / "Hi Ananya," name the reader, not the one doing the action.
+GREETINGS = {"dear", "hi", "hello", "hey"}
 
 # Common Indian surnames and first names (a name with one of these is a PERSON).
 SURNAMES = {
@@ -89,3 +125,14 @@ NOT_ENTITIES = {
     "pdf", "ceo", "cto", "cfo", "hr", "ph", "tel", "mob", "dear", "regards", "hi", "hello",
     "thanks", "sir", "madam", "note", "email", "e-mail", "phone",
 }
+
+# Job titles before a name are dropped: "Chairman V. Narayanan" -> "V. Narayanan".
+JOB_TITLES = {"chairman", "chairperson", "director", "minister", "president", "secretary",
+              "captain", "coach", "chief", "principal", "professor", "inspector", "officer",
+              "governor", "commissioner", "collector", "editor", "founder", "ceo", "manager"}
+
+# A name ending in one of these is an event, not a person or place ("Asian Games",
+# "Ganesh Chaturthi", "Khelo India Games"); it is kept as a THING.
+EVENT_WORDS = {"games", "olympics", "cup", "championship", "championships", "league", "festival",
+               "fest", "chaturthi", "puja", "jayanti", "diwali", "holi", "mela", "summit",
+               "conference", "expo", "march", "war", "movement", "yatra", "utsav", "day"}

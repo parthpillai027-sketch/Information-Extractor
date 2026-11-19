@@ -9,7 +9,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 from extractor import MAX_CHARS, extract  # noqa: E402
 
 KEYS = {"entities", "emails", "phones", "urls", "dates", "times", "money", "percentages",
-        "pin_codes", "noun_phrases", "keywords", "nlp_steps", "stats"}
+        "pin_codes", "noun_phrases", "keywords", "nlp_steps", "stats",
+        "items", "facts", "relations", "mode", "corrections", "ai"}
 
 SAMPLE = ("Rahul Sharma from Infosys will visit Bengaluru on 15/11/2026. "
           "Call +91 9876543210 or mail rahul.s@infosys.com. Fee is Rs. 2,500.")

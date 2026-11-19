@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "PERSON": [
+      "Neeraj Chopra"
+    ],
+    "ORGANIZATION": [
+      "Athletics Federation of India"
+    ],
+    "GPE": [
+      "Hangzhou"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [],
+  "times": [],
+  "money": [
+    "Rs 25 lakh"
+  ],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Neeraj Chopra"
+      ],
+      "action": "won",
+      "where": [
+        "Hangzhou"
+      ],
+      "when": [],
+      "how_much": [
+        "88.88 metres"
+      ]
+    },
+    {
+      "who": [
+        "Athletics Federation of India"
+      ],
+      "action": "announced",
+      "where": [],
+      "when": [],
+      "how_much": [
+        "Rs 25 lakh"
+      ]
+    }
+  ]
+}

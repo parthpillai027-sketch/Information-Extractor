@@ -1,0 +1,57 @@
+{
+  "entities": {
+    "PERSON": [
+      "Sri Rama",
+      "Sita",
+      "Ravana"
+    ],
+    "GPE": [
+      "Ayodhya",
+      "Mithila",
+      "Lanka"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [],
+  "times": [],
+  "money": [],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Sri Rama"
+      ],
+      "action": "was born",
+      "where": [
+        "Ayodhya"
+      ],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [
+        "Sri Rama"
+      ],
+      "action": "married",
+      "where": [
+        "Mithila"
+      ],
+      "when": [],
+      "how_much": []
+    },
+    {
+      "who": [
+        "Sri Rama"
+      ],
+      "action": "defeated",
+      "where": [
+        "Lanka"
+      ],
+      "when": [],
+      "how_much": []
+    }
+  ]
+}

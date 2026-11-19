@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "PERSON": [
+      "Mahatma Gandhi"
+    ],
+    "GPE": [
+      "Porbandar",
+      "Dandi"
+    ]
+  },
+  "emails": [],
+  "phones": [],
+  "urls": [],
+  "dates": [
+    "2 October 1869",
+    "1930"
+  ],
+  "times": [],
+  "money": [],
+  "percentages": [],
+  "pin_codes": [],
+  "facts": [
+    {
+      "who": [
+        "Mahatma Gandhi"
+      ],
+      "action": "was born",
+      "where": [
+        "Porbandar"
+      ],
+      "when": [
+        "2 October 1869"
+      ],
+      "how_much": []
+    },
+    {
+      "who": [
+        "Mahatma Gandhi"
+      ],
+      "action": "led",
+      "where": [
+        "Dandi"
+      ],
+      "when": [
+        "1930"
+      ],
+      "how_much": []
+    }
+  ]
+}

@@ -1,51 +1,80 @@
 # Information-Extractor
 
-A website that extracts the important information from any English text — people, organizations, places, dates, times, phone numbers, emails, money, percentages, PIN codes and keywords — using **NLP with NLTK**.
+An **information extraction** website built with **NLTK**. Paste any English text and it finds **who did what, where, when and how much**, not just keywords.
 
 > Live demo: _add link after deployment_
 
-## Features
-- Named-entity recognition: PERSON, ORGANIZATION, GPE / LOCATION, using NLTK plus a rule layer for Indian names and places
-- Emails, phone numbers (+91 mobiles, landlines, 1800 toll-free), URLs (including bare domains like `dsu.edu.in`)
-- Dates in numbers (`15/11/2026`, `2026-11-15`) and in words (`15 Nov 2026`, `November 15, 2026`)
-- Times (`10:30 am`, `9.30 p.m.`, `18:45 hrs`), money (`Rs. 2,500`, `₹1,50,000/-`, `INR 3 lakh`), percentages, PIN codes
-- Key noun phrases and top keywords
-- "Show NLP steps" panel: tokens and POS tags for every sentence
-- Handles empty input, a single character, numbers only, and very long text (cut at 20,000 characters)
-- JSON API: `POST /api/extract` (format in [docs/json_contract.md](docs/json_contract.md))
+## What it extracts
+For *"Lord Shiva and Goddess Parvati live on Mount Kailash. Rahul Sharma from Infosys will visit Bengaluru on 15 Nov 2026."*
+
+| Who | Action | Where | When | Affiliation |
+|---|---|---|---|---|
+| Lord Shiva, Goddess Parvati | live | Mount Kailash | | |
+| Rahul Sharma | will visit | Bengaluru | 15 Nov 2026 | Infosys |
+
+- **Items with categories:** PERSON, PLACE, ORGANIZATION, DATE, TIME, MONEY, PERCENT, CONTACT (email/phone/link), THING (other important noun phrases).
+- **Facts:** one record per action: `who · action · what · where · when · how_much · contact`.
+- **Relations:** triples such as *(Lord Shiva, live on, Mount Kailash)* and *(Rahul Sharma, from, Infosys)*.
+- **Extra:** keywords, noun phrases, and every NLP step (tokens + POS tags) for each sentence.
+- **Optional smart mode:** an AI model (xAI Grok by default, or Gemini) checks NLTK's result and lists its corrections. NLTK always runs first; without an API key the site works fully with NLTK only.
 
 ## How it works
 ```
-text ──► clean (None, odd spaces, cut very long input)
-     ├─► regex fields, in priority order: emails → urls → phones → money → percentages → dates → times → PIN codes
-     └─► for each sentence:  sent_tokenize → word_tokenize → pos_tag → ne_chunk → rule layer → entities
-                                                                    └─► RegexpParser → noun phrases
-         all sentences  ──►  drop stopwords → FreqDist → top 10 keywords
+text ─► sentences (sent_tokenize) ─► words (word_tokenize) ─► POS tags (pos_tag)
+          │
+          ├─► NER: ne_chunk  +  rule layer ─────────────► PERSON / ORGANIZATION / PLACE
+          ├─► regular expressions ───────────────────────► DATE / TIME / MONEY / PERCENT / CONTACT / PIN
+          ├─► RegexpParser noun phrases ─────────────────► THING
+          │
+          └─► facts.py: verbs from POS tags + typed items
+                 ├─► facts      who | action | what | where | when | how_much | contact
+                 └─► relations  (subject, relation, object), also nltk.sem.extract_rels
+                                     │
+                    optional ──► llm_refiner.py: AI checks types + facts (strict JSON, 10 s, fallback)
 ```
 
-**Regex priority.** Every regex marks the characters it used, and a later regex cannot reuse them. So the digits of a phone number never also become a PIN code, and the domain inside an email is not also a URL.
+1. **NER rule layer** (`app/extractor.py`, `app/gazetteer.py`). NLTK's `ne_chunk` was trained on American news, so on Indian text it calls *Mount Kailash* a PERSON and *Goddess Parvati* an ORGANIZATION. The rules fix this with:
+   - word lists of Indian places, organisations, names, and gods and goddesses;
+   - name shapes: *Mount/Lake/River X* → place; *Lord/Goddess/Sri X* → person; *X University/Bank* → organisation; *X Temple/Road/Nagar* → place; *X Games/Festival* → event, not a person;
+   - removing titles (*Dr., Chairman*), and dropping capitalised ordinary words at the start of a sentence.
+2. **Facts** (`app/facts.py`). The POS tags give the verb groups (*will visit*, *was born*, *grew up*). The sentence is cut into clauses at *and / , / that / which*. In each clause:
+   - the person or organisation **before** the verb is **who**;
+   - typed items **after** the verb fill **what / where / when / how_much / contact**.
 
-**Why a rule layer on top of NLTK's NER?** NLTK's `ne_chunk` is a maximum-entropy classifier trained on American news (the ACE corpus). On Indian text it splits "Rahul Sharma" into PERSON + ORGANIZATION and tags Infosys and Bengaluru as PERSON. The rule layer (`find_entities` in `app/extractor.py`, word lists in `app/gazetteer.py`) does five things:
-1. Merges neighbouring name tokens into one name ("Rahul" + "Sharma" → "Rahul Sharma").
-2. Checks small word lists (gazetteers): Indian states and cities, well-known organizations, common Indian first names and surnames.
-3. Uses head words: a name containing *University, Bank, Ltd, Institute…* is an ORGANIZATION. A name ending in *Road, Nagar, Layout, Hills, Park…* is a LOCATION. A title (*Dr., Mr., Prof.*) marks a PERSON and is removed.
-4. Drops ordinary English words that are capitalised only because they start a sentence ("Fee is…", "Meet Priya"). It checks them against NLTK's `words` corpus.
-5. Otherwise keeps NLTK's own label.
-
-**Speed.** In NLTK 3.9+, `nltk.ne_chunk()` reloads its model on every call, which costs about 1 second per sentence. The extractor loads the chunker once and reuses it. A 20,000-character text takes about 1.5 s.
+   Extra rules:
+   - **passive voice:** *funded **by** ICMR* → who = ICMR;
+   - **pronouns:** *He* → the last person mentioned;
+   - **shared subjects:** *born in A **and** grew up in B*;
+   - **greetings:** in *Dear Arjun,*, Arjun is the reader, not the doer;
+   - **affiliation:** *Rahul Sharma **from** Infosys*.
+3. **Relations.** One triple per (who, object) pair of each fact, with the preposition added (*live **on***). On top of that, NLTK's own relation extractor `nltk.sem.extract_rels` runs on the entity-chunked sentence with patterns such as *PER from/of/at ORG* and *PER in/at/on PLACE*.
+4. **Smart mode** (`app/llm_refiner.py`). The text, NLTK's items and the facts are sent to the AI model, which returns corrected JSON. Every type must be one of the 9 categories, and every piece of text must appear word for word in the input, so the AI cannot invent facts. On a timeout (10 s), an error or bad JSON, the NLTK result is kept and `ai.error` says why. The response shows `mode` (`nltk` / `hybrid`) and `corrections` such as *Mount Kailash: PERSON → PLACE*.
+5. **Speed.** `nltk.ne_chunk()` reloads its model on every call (about 1 s per sentence), so the chunker is loaded once and reused.
 
 ## NLP techniques used
-| Technique | NLTK function | Role |
+| Technique | Tool | Role |
 |---|---|---|
-| Sentence segmentation | `sent_tokenize` (Punkt) | Process each sentence separately; re-join splits after "Rs.", "Dr." |
-| Tokenization | `word_tokenize` | Split sentences into words |
-| Stopword removal | `corpus.stopwords` | Drop common words before keyword ranking |
-| POS tagging | `pos_tag` (averaged perceptron) | Label nouns, verbs, etc. |
-| Noun-phrase chunking | `RegexpParser` | Find key phrases: `{<DT\|PRP$>?<JJ.*>*<NN.*>+}` |
-| Named-entity recognition | `ne_chunker` (maxent) + rules | Find people, organizations, places |
-| Word list lookup | `corpus.words` | Tell ordinary words from names |
-| Frequency distribution | `FreqDist` | Rank keywords |
-| Regular expressions | `re` | Emails, phones, URLs, dates, times, money, %, PIN codes |
+| Sentence segmentation | `nltk.sent_tokenize` (Punkt) | Process each sentence; re-join splits after "Rs.", "Dr." |
+| Tokenization | `nltk.word_tokenize` | Split sentences into words |
+| POS tagging | `nltk.pos_tag` (averaged perceptron) | Find verbs (actions), nouns, numbers |
+| Named-entity recognition | `ne_chunker` (maxent) + rule layer | People, organisations, places |
+| Gazetteer lookup | `app/gazetteer.py`, `nltk.corpus.words` | Indian names/places/deities; ordinary words vs names |
+| Noun-phrase chunking | `nltk.RegexpParser` `{<DT\|PRP$>?<JJ.*>*<NN.*>+}` | THINGs and the *what* of a fact |
+| Fact extraction | POS verb groups + clause rules (`facts.py`) | who / action / what / where / when / how much |
+| Relation extraction | `nltk.sem.extract_rels` + verb patterns | (subject, relation, object) triples |
+| Pattern matching | `re` | Emails, phones, URLs, dates, times, money, %, PIN codes |
+| Keyword ranking | `stopwords` + `nltk.FreqDist` | Extra: most frequent content words |
+| Optional AI check | xAI Grok / Gemini (`llm_refiner.py`) | Correct types and facts, with validation and fallback |
+
+## API
+```bash
+curl -X POST http://127.0.0.1:5000/api/extract -H "Content-Type: application/json" \
+     -d '{"text": "Lord Shiva and Goddess Parvati live on Mount Kailash.", "smart": false}'
+curl http://127.0.0.1:5000/api/health
+```
+- Text can be up to 100,000 characters; the NLP reads the first 20,000.
+- Bad requests get a JSON error with status 400, e.g. `{"error": "...", "status": 400}`.
+- The full response format is in [docs/json_contract.md](docs/json_contract.md).
 
 ## Setup
 ```bash
@@ -57,71 +86,86 @@ pip install -r requirements.txt
 python setup_nltk.py           # downloads NLTK models into ./nltk_data
 python app/app.py              # open http://127.0.0.1:5000
 ```
-`setup_nltk.py` downloads 5 NLTK packages into `./nltk_data` (or into `$NLTK_DATA` if set). It then runs the pipeline once and exits with an error if anything is missing. The folder is git-ignored.
+**Smart mode (optional).** Copy `.env.example` to `.env` and put your key in `LLM_API_KEY` (from console.x.ai for Grok, or set `LLM_PROVIDER=gemini` and use a Google AI Studio key). `.env` is git-ignored, so never commit it. If `LLM_MODEL` is empty, the app asks xAI which Grok models your key can use and picks one.
 
-Try the engine on its own: `python app/extractor.py "Meet Priya at 5 pm on 15 Nov 2026."`
+Try the engine on its own: `python app/extractor.py "Sri Krishna was born in Mathura and grew up in Vrindavan."`
 
-## Run tests
+## Tests
 ```bash
-pytest -q                      # 51 tests: every field, edge cases, the Flask API
+pytest -q                      # 78 tests: categories, facts, relations, API errors, AI layer (mocked)
+python scripts/evaluate.py     # accuracy tables below
 ```
+The tests never call a real AI API. The AI layer is tested with fake answers: valid, invented text, bad JSON, and timeout.
 
 ## Accuracy
-`python scripts/evaluate.py` runs the extractor on the 15 hand-labelled texts in `samples/`. Each `sample_XX.txt` has a matching `sample_XX.json` with the expected answer. Add `--errors` to list every miss.
+Two sets of hand-labelled texts:
+- **Tuning set** (`samples/`, 15 texts). Used while writing the entity rules, so its scores are optimistic.
+- **Unseen set** (`samples/unseen/`, 10 texts). Mythology, a college notice, an order SMS, news, history, sports and an offer letter. The expected answers, including the facts, were written and committed (commit `Add 10 unseen hand-labelled samples`) **before** the fact rules were written.
 
-| Type | TP | FP | FN | Precision | Recall | F1 |
-|---|--:|--:|--:|--:|--:|--:|
-| PERSON | 13 | 1 | 1 | 0.93 | 0.93 | 0.93 |
-| ORGANIZATION | 15 | 2 | 2 | 0.88 | 0.88 | 0.88 |
-| GPE | 30 | 3 | 0 | 0.91 | 1.00 | 0.95 |
-| emails | 4 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| phones | 6 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| urls | 5 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| dates | 14 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| times | 10 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| money | 16 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| percentages | 7 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| pin_codes | 3 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| **Entities (NER)** | 58 | 6 | 3 | 0.91 | 0.95 | 0.93 |
-| **Regex fields** | 65 | 0 | 0 | 1.00 | 1.00 | 1.00 |
-| **Overall (micro)** | 123 | 6 | 3 | 0.95 | 0.98 | 0.96 |
+Facts are scored as *(action, slot, value)* triples, e.g. *("was born", where, Mathura)*. A value only counts when it is attached to the right action.
 
-- **Precision** = TP / (TP + FP): of what we found, how much was right. **Recall** = TP / (TP + FN): of what was in the text, how much we found. **F1** is their harmonic mean. Counts are summed over all samples (micro-average).
-- An item counts as correct only if its text matches exactly (ignoring case and extra spaces). The GPE row also counts places that NLTK labels LOCATION.
-- With only NLTK's `ne_chunk` and no rule layer, entity F1 is **0.35** (precision 0.30, recall 0.43). The first version of the rules reached 0.78; the current rules reach **0.93**. The regex fields scored 0.98 before the toll-free and bare-domain patterns were added.
-- **Be honest in the viva:** these same 15 samples were used to find errors while improving the rules. So these numbers are optimistic. A new, unseen set of texts would score lower, especially for NER.
-- Remaining errors: "IndiGo" labelled a place, "Microsoft Research India" split in two, "Thangjam Bembem" labelled a place, and "Customer" in "Dear Customer" taken as a person.
+**F1 scores**
+
+| Set | System | Entities (NER) | Regex fields | Overall items | Facts |
+|---|---|--:|--:|--:|--:|
+| Tuning (15) | NLTK only | 0.36 | 1.00 | 0.66 | - |
+| Tuning (15) | NLTK + rules | **0.93** | 1.00 | **0.96** | - |
+| **Unseen (10), first run** | NLTK only | 0.33 | 0.91 | 0.55 | 0.67 |
+| **Unseen (10), first run** | NLTK + rules | **0.93** | 0.91 | **0.92** | **0.90** |
+| Unseen (10), after fixes | NLTK + rules | 0.99 | 0.96 | 0.97 | 0.93 |
+
+- **The honest test score is the first unseen run:** entities 0.33 → **0.93** and facts 0.67 → **0.90** compared with plain NLTK.
+- After that run, three general bugs it revealed were fixed:
+  - years before 1900 ("2 October 1869");
+  - job titles before names ("Chairman V. Narayanan");
+  - event names taken as people ("Asian Games").
+
+  The last row is therefore no longer a fully unseen score.
+- Some names in the unseen texts (Rama, Sita, Ravana, Ayodhya) are also in the word lists. Names that are in no list rely on NLTK and score lower.
+- Remaining unseen errors:
+  - a toll-free number in 4-4 format;
+  - a bare year ("in 1930");
+  - "Data Analyst" taken as a person;
+  - verbs the tagger reads as nouns ("cost", "closes").
+- **NLTK + AI** can be scored with `python scripts/evaluate.py --smart` when a key is set. It is not in the table because CI never calls a paid API.
+
+Per-type tables: `python scripts/evaluate.py --markdown`.
 
 ## Deployment (Render, free plan)
 `render.yaml` is a Render Blueprint:
-- **Build:** `pip install -r requirements.txt && python setup_nltk.py`. This downloads the NLTK models into `./nltk_data` at build time. `NLTK_DATA` points to the same folder.
-- **Start:** `gunicorn --chdir app app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120`. One worker keeps a single copy of the models within the free plan's 512 MB.
+- **Build:** `pip install -r requirements.txt && python setup_nltk.py`. This downloads the NLTK models into `./nltk_data`, and `NLTK_DATA` points there.
+- **Start:** `gunicorn --chdir app app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120`.
+- **Health check:** `/api/health`.
+- **Smart mode:** Render asks for `LLM_API_KEY` (and optionally `LLM_MODEL`) in its dashboard (`sync: false`), so the key never goes into git. Leave it empty for NLTK-only.
 
-Steps: sign in at render.com with GitHub → **New → Blueprint** → choose this repo → wait for the build. The free plan sleeps after 15 minutes idle, so the first request after that takes 30–60 s.
+The free plan sleeps after 15 minutes idle, so the first request after that takes 30–60 s.
 
 ## Project structure
 ```
-app/extractor.py      NLP engine (Member 1)
-app/gazetteer.py      Word lists used by the NER rules (Member 1)
-app/app.py            Flask routes (Member 2)
-app/templates/        HTML
-app/static/           CSS + JS
+app/extractor.py      NLP pipeline: regex, NER + rule layer, orchestration (Member 1)
+app/facts.py          Facts (who/action/where/when...) and relations (Member 1)
+app/llm_refiner.py    Optional AI check with validation and fallback (Member 1)
+app/gazetteer.py      Word lists: Indian places, organisations, names, deities (Member 1)
+app/app.py            Flask routes + JSON API (Member 1 backend)
+app/templates/        HTML (Member 2)
+app/static/           CSS + JS (Member 2)
 docs/json_contract.md JSON format shared by both halves
-samples/              15 example texts + expected JSON answers
-scripts/evaluate.py   Precision / recall / F1 per type
-tests/                Unit tests (extractor + Flask API)
+samples/              15 tuning texts + expected JSON;  samples/unseen/ 10 unseen texts
+scripts/evaluate.py   Precision / recall / F1: NLTK vs NLTK + rules (vs AI with --smart)
+tests/                78 unit tests (AI calls mocked)
 setup_nltk.py         Downloads NLTK data into ./nltk_data
-render.yaml           Render deployment blueprint
+render.yaml           Render deployment blueprint;  .env.example: AI settings template
 ```
 
 ## Known limitations
-- NER is rule-assisted, not deep learning. Names that are in no list and that NLTK gets wrong stay wrong.
-- A 6-digit number such as "100000 people" is reported as a PIN code (amounts with ₹ / Rs / rupees are not).
-- Dates like 11/12/2026 are not interpreted, so DD/MM and MM/DD are not told apart; the text is returned as written.
+- Facts come from rules on POS tags, not a full grammar parser. Long sentences with many clauses can attach a value to the wrong action.
+- Verbs the tagger mistakes for nouns ("the mission **cost**…") produce no action.
+- Names that are in no word list and that NLTK gets wrong stay wrong, unless smart mode is on.
+- A 6-digit number such as "100000 people" is reported as a PIN code. A bare year ("in 1930") is not a date.
 - English only.
 
 ## Team
-- S Krithik Yadav — NLP engine
+- S Krithik Yadav — NLP engine and backend
 - _Member 2 name_ — Website & deployment
 
 ## License

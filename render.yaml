@@ -9,10 +9,20 @@ services:
     # app/app.py imports "extractor" from its own folder, so gunicorn runs from app/.
     # One worker with 4 threads keeps a single copy of the NLTK models in the free plan's 512 MB.
     startCommand: gunicorn --chdir app app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
-    healthCheckPath: /
+    healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.11"
       - key: NLTK_DATA
         value: /opt/render/project/src/nltk_data
+      # Optional smart mode (AI check). Render asks for the key in its dashboard; it is never
+      # stored in git. Leave it empty to run with NLTK only.
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: xai
+      - key: LLM_MODEL
+        sync: false
+      - key: LLM_TIMEOUT
+        value: "10"
