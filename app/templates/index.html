@@ -260,9 +260,10 @@ tr:last-child td{border-bottom:0}
 
 .doc.tags{line-height:3.05;padding-bottom:6px}
 mark{position:relative}
-.et{position:absolute;left:5px;top:calc(100% - 1px);font:600 .54rem "Geist Mono",monospace;letter-spacing:.05em;color:var(--c);white-space:nowrap;pointer-events:none;line-height:1}
+.et{position:absolute;left:5px;top:calc(100% - 1px);font:600 .54rem "Geist Mono",monospace;letter-spacing:.05em;color:var(--c);white-space:nowrap;pointer-events:none;line-height:1;-webkit-user-select:none;user-select:none}
 .doc:not(.tags) .et,mark.off .et{display:none}
 .pbr{display:block;height:10px}
+mark.nw{white-space:nowrap}
 .tgl{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-2);font-size:.76rem}
 .tgl[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-ink);background:var(--person-bg)}
 .doc-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
@@ -339,6 +340,7 @@ mark{position:relative}
   .go .kbd{display:none}
   .donut{width:104px;height:104px}
   .bars li{grid-template-columns:84px minmax(0,1fr) 38px}
+  .doc{max-height:none}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important;scroll-behavior:auto!important}
@@ -495,7 +497,7 @@ mark{position:relative}
   });
 
   // ---------------------------------------------------------------- composer
-  if (text.value.indexOf("{" + "{") === 0) text.value = ""; // file opened directly, without Flask
+  if (text.value === "{" + "{ text }" + "}") text.value = ""; // file opened directly, without Flask
   var mac = /Mac|iPhone|iPad/.test(navigator.platform);
   $("go-kbd").textContent = mac ? "⌘↵" : "Ctrl ↵";
   function count() { var n = text.value.length; $("count").textContent = n.toLocaleString() + (n === 1 ? " char" : " chars"); }
@@ -676,7 +678,7 @@ mark{position:relative}
     // document
     h += '<div class="card c8 reveal"' + D() + '><div class="card-h"><h3>' + ICON("doc") + 'Document</h3><div class="doc-tools"><button type="button" class="tgl" id="tag-tgl" aria-pressed="true">Entity tags</button><div class="legend" id="legend">' +
       GROUPS.map(function (g) { return '<button type="button" class="lg k-' + g.key + '" aria-pressed="true" data-k="' + g.key + '"><i></i>' + g.label + "</button>"; }).join("") +
-      '</div></div></div><div class="doc tags" id="doc">' + highlight(src, items) + "</div></div>";
+      '</div></div></div><div class="doc tags" id="doc-text">' + highlight(src, items) + "</div></div>";
 
     // entities
     h += '<div class="card c4 reveal"' + D() + '><div class="card-h"><h3>' + ICON("grid") + 'Entities</h3><span class="pill">' + items.length + "</span></div>";
@@ -763,7 +765,7 @@ mark{position:relative}
       var o = owner[k], end = k;
       while (end < src.length && owner[end] === o) end++;
       var part = esc(src.slice(k, end));
-      out += o ? '<mark class="k-' + o.g.key + '" data-k="' + o.g.key + '" data-v="' + esc(o.v) + '" title="' + esc(o.tag + " · " + o.type) + '">' + part + '<span class="et" aria-hidden="true">' + esc(o.short) + "</span></mark>" : part;
+      out += o ? '<mark class="k-' + o.g.key + (o.v.length <= 28 ? " nw" : "") + '" data-k="' + o.g.key + '" data-v="' + esc(o.v) + '" title="' + esc(o.tag + " · " + o.type) + '">' + part + '<span class="et" aria-hidden="true">' + esc(o.short) + "</span></mark>" : part;
       k = end;
     }
     return out.replace(/[ \t]*\n[ \t]*\n[\s]*/g, '<span class="pbr"></span>');
@@ -841,7 +843,7 @@ mark{position:relative}
     $("tag-tgl").addEventListener("click", function () {
       var on = this.getAttribute("aria-pressed") !== "true";
       this.setAttribute("aria-pressed", on);
-      $("doc").classList.toggle("tags", on);
+      $("doc-text").classList.toggle("tags", on);
     });
     // legend toggles
     $("legend").addEventListener("click", function (e) {
