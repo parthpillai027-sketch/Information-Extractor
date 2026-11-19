@@ -6,8 +6,8 @@ How it works
      plus NLTK's typed items and facts are sent to the LLM, which returns corrected JSON.
   3. The answer is validated strictly: allowed types only, and every piece of text must be
      copied exactly from the input text (so the LLM cannot invent facts).
-  4. If the provider is busy (HTTP 5xx, common on free tiers) the call is tried once more,
-     within the same time limit (Gemini: with a backup model).
+  4. If the provider is busy (HTTP 5xx, common on free tiers) or does not answer in time, the
+     call is tried once more within the same time limit (Gemini: with a backup model).
      Any other problem (no key, timeout after LLM_TIMEOUT seconds, HTTP error, bad JSON) -> the
      NLTK result is kept and "ai.error" says why. The website never breaks because of the LLM.
 
@@ -46,6 +46,7 @@ GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite"
 GEMINI_BACKUP_MODEL = "gemini-flash-lite-latest"   # used for the second try when the first is busy
 DEFAULT_TIMEOUT = 25.0                  # total for both tries; one answer usually takes 5-12 s
 BUSY_CODES = {500, 502, 503, 504}       # provider overloaded: worth one more try
+FIRST_TRY_SHARE = 0.6                   # 25 s -> first try 15 s, second try up to ~10 s
 MIN_RETRY_SECONDS = 5
 
 SYSTEM_PROMPT = """You check the output of an NLTK information-extraction system for English text
@@ -223,17 +224,28 @@ def _apply(result, items, facts):
     result["corrections"] = corrections
 
 
+def _is_timeout(err):
+    return isinstance(err, (socket.timeout, TimeoutError)) or (
+        isinstance(err, urllib.error.URLError) and isinstance(err.reason, socket.timeout))
+
+
 def _ask(call, system, user, cfg):
-    """Call the LLM. If the provider is busy (HTTP 5xx), try once more within the same time
-    limit; for Gemini the second try uses a backup model, which has its own capacity."""
-    start = time.perf_counter()
+    """Call the LLM, with at most one more try inside the same time limit (LLM_TIMEOUT).
+
+    The first try gets 60% of the time. If the provider is busy (HTTP 5xx) or does not answer
+    in that time, the second try gets what is left; for Gemini it uses a backup model, which
+    has its own capacity. Other errors (wrong key, bad model, rate limit) are not retried."""
+    total, start = cfg["timeout"], time.perf_counter()
+    cfg["timeout"] = total * FIRST_TRY_SHARE
     try:
         return call(system, user, cfg)
-    except urllib.error.HTTPError as err:
-        left = cfg["timeout"] - (time.perf_counter() - start) - 1
-        if err.code not in BUSY_CODES or left < MIN_RETRY_SECONDS:
+    except Exception as err:
+        busy = isinstance(err, urllib.error.HTTPError) and err.code in BUSY_CODES
+        left = total - (time.perf_counter() - start) - (1 if busy else 0)
+        if not (busy or _is_timeout(err)) or left < MIN_RETRY_SECONDS:
             raise
-    time.sleep(1)
+    if busy:
+        time.sleep(1)
     if cfg["provider"] == "gemini" and cfg["model"] != GEMINI_BACKUP_MODEL:
         cfg["model"] = GEMINI_BACKUP_MODEL
     cfg["timeout"] = left

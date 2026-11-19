@@ -109,7 +109,45 @@ def test_busy_provider_is_tried_once_more(monkeypatch):
     llm_refiner.refine(TEXT, r, call=busy_then_ok)
     assert len(calls) == 2 and r["mode"] == "hybrid"
     assert calls[1][0] == llm_refiner.GEMINI_BACKUP_MODEL == r["ai"]["model"]
-    assert calls[1][1] < calls[0][1]              # both tries share one time limit
+    assert calls[0][1] == 15                      # first try: 60% of the 25 s limit
+    assert calls[1][1] <= 24                      # second try: what is left (after a 1 s pause)
+
+
+def test_hanging_provider_is_tried_once_more(monkeypatch):
+    with_key(monkeypatch)
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    clock = [0.0]
+    monkeypatch.setattr(llm_refiner.time, "perf_counter", lambda: clock[0])
+    calls = []
+
+    def hang_then_ok(system, user, cfg):
+        calls.append((cfg["model"], cfg["timeout"]))
+        if len(calls) == 1:
+            clock[0] += cfg["timeout"]               # the first try used all its 15 s
+            raise socket.timeout("timed out")
+        return json.dumps({"items": [{"text": "Mount Kailash", "type": "PLACE"}]})
+
+    r = extract(TEXT)
+    llm_refiner.refine(TEXT, r, call=hang_then_ok)
+    assert r["mode"] == "hybrid" and r["ai"]["model"] == llm_refiner.GEMINI_BACKUP_MODEL
+    assert calls[0][1] == 15 and calls[1][1] == 10   # 15 + 10 = the 25 s limit
+
+
+def test_hanging_twice_falls_back_within_the_limit(monkeypatch):
+    with_key(monkeypatch)
+    clock = [0.0]
+    monkeypatch.setattr(llm_refiner.time, "perf_counter", lambda: clock[0])
+    calls = []
+
+    def always_hang(system, user, cfg):
+        calls.append(cfg["timeout"])
+        clock[0] += cfg["timeout"]
+        raise urllib.error.URLError(socket.timeout("timed out"))
+
+    r = extract(TEXT)
+    llm_refiner.refine(TEXT, r, call=always_hang)
+    assert len(calls) == 2 and sum(calls) == 25
+    assert r["mode"] == "nltk" and r["ai"]["seconds"] == 25
 
 
 def test_busy_twice_falls_back_with_a_clear_message(monkeypatch):
