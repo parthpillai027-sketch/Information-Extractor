@@ -16,7 +16,7 @@ For *"Lord Shiva and Goddess Parvati live on Mount Kailash. Rahul Sharma from In
 - **Facts:** one record per action: `who · action · what · where · when · how_much · contact`.
 - **Relations:** triples such as *(Lord Shiva, live on, Mount Kailash)* and *(Rahul Sharma, from, Infosys)*.
 - **Extra:** keywords, noun phrases, and every NLP step (tokens + POS tags) for each sentence.
-- **Optional smart mode:** an AI model (xAI Grok by default, or Gemini) checks NLTK's result and lists its corrections. NLTK always runs first; without an API key the site works fully with NLTK only.
+- **Optional smart mode:** an AI model (Google Gemini on the live site, or xAI Grok) checks NLTK's result and lists its corrections. NLTK always runs first; without an API key the site works fully with NLTK only.
 
 ## How it works
 ```
@@ -30,7 +30,7 @@ text ─► sentences (sent_tokenize) ─► words (word_tokenize) ─► POS ta
                  ├─► facts      who | action | what | where | when | how_much | contact
                  └─► relations  (subject, relation, object), also nltk.sem.extract_rels
                                      │
-                    optional ──► llm_refiner.py: AI checks types + facts (strict JSON, 10 s, fallback)
+                    optional ──► llm_refiner.py: AI checks types + facts (strict JSON, 25 s, fallback)
 ```
 
 1. **NER rule layer** (`app/extractor.py`, `app/gazetteer.py`). NLTK's `ne_chunk` was trained on American news, so on Indian text it calls *Mount Kailash* a PERSON and *Goddess Parvati* an ORGANIZATION. The rules fix this with:
@@ -48,7 +48,7 @@ text ─► sentences (sent_tokenize) ─► words (word_tokenize) ─► POS ta
    - **greetings:** in *Dear Arjun,*, Arjun is the reader, not the doer;
    - **affiliation:** *Rahul Sharma **from** Infosys*.
 3. **Relations.** One triple per (who, object) pair of each fact, with the preposition added (*live **on***). On top of that, NLTK's own relation extractor `nltk.sem.extract_rels` runs on the entity-chunked sentence with patterns such as *PER from/of/at ORG* and *PER in/at/on PLACE*.
-4. **Smart mode** (`app/llm_refiner.py`). The text, NLTK's items and the facts are sent to the AI model, which returns corrected JSON. Every type must be one of the 9 categories, and every piece of text must appear word for word in the input, so the AI cannot invent facts. On a timeout (10 s), an error or bad JSON, the NLTK result is kept and `ai.error` says why. The response shows `mode` (`nltk` / `hybrid`) and `corrections` such as *Mount Kailash: PERSON → PLACE*.
+4. **Smart mode** (`app/llm_refiner.py`). The text, NLTK's items and the facts are sent to the AI model, which returns corrected JSON. Every type must be one of the 9 categories, and every piece of text must appear word for word in the input, so the AI cannot invent facts. If the AI service is busy (HTTP 5xx), the call is tried once more with a backup model. On a timeout (25 s in total), an error or bad JSON, the NLTK result is kept and `ai.error` says why. The response shows `mode` (`nltk` / `hybrid`) and `corrections` such as *Mount Kailash: PERSON → PLACE*.
 5. **Speed.** `nltk.ne_chunk()` reloads its model on every call (about 1 s per sentence), so the chunker is loaded once and reused.
 
 ## NLP techniques used
@@ -64,7 +64,7 @@ text ─► sentences (sent_tokenize) ─► words (word_tokenize) ─► POS ta
 | Relation extraction | `nltk.sem.extract_rels` + verb patterns | (subject, relation, object) triples |
 | Pattern matching | `re` | Emails, phones, URLs, dates, times, money, %, PIN codes |
 | Keyword ranking | `stopwords` + `nltk.FreqDist` | Extra: most frequent content words |
-| Optional AI check | xAI Grok / Gemini (`llm_refiner.py`) | Correct types and facts, with validation and fallback |
+| Optional AI check | Google Gemini / xAI Grok (`llm_refiner.py`) | Correct types and facts, with validation and fallback |
 
 ## API
 ```bash
@@ -86,7 +86,7 @@ pip install -r requirements.txt
 python setup_nltk.py           # downloads NLTK models into ./nltk_data
 python app/app.py              # open http://127.0.0.1:5000
 ```
-**Smart mode (optional).** Copy `.env.example` to `.env` and put your key in `LLM_API_KEY` (from console.x.ai for Grok, or set `LLM_PROVIDER=gemini` and use a Google AI Studio key). `.env` is git-ignored, so never commit it. If `LLM_MODEL` is empty, the app asks xAI which Grok models your key can use and picks one.
+**Smart mode (optional).** Copy `.env.example` to `.env` and put your key in `LLM_API_KEY` (a free key from aistudio.google.com with `LLM_PROVIDER=gemini`, or a console.x.ai key with `LLM_PROVIDER=xai`). `.env` is git-ignored, so never commit it. If `LLM_MODEL` is empty, Gemini uses `gemini-3.1-flash-lite`, and for xAI the app asks which Grok models your key can use.
 
 Try the engine on its own: `python app/extractor.py "Sri Krishna was born in Mathura and grew up in Vrindavan."`
 

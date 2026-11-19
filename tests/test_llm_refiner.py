@@ -1,6 +1,7 @@
 """The optional AI layer, with the LLM mocked (no real API calls)."""
 import json
 import socket
+import urllib.error
 
 import llm_refiner
 from extractor import extract
@@ -29,7 +30,8 @@ def test_default_provider_is_xai(monkeypatch):
     assert cfg["provider"] == "xai" and cfg["base_url"] == "https://api.x.ai/v1"
     monkeypatch.setenv("LLM_PROVIDER", "gemini")
     monkeypatch.delenv("LLM_MODEL")
-    assert llm_refiner.config()["model"] == "gemini-flash-latest"
+    assert llm_refiner.config()["model"] == "gemini-3.1-flash-lite"
+    assert llm_refiner.config()["timeout"] == 25
 
 
 def test_valid_answer_applies_corrections(monkeypatch):
@@ -85,6 +87,54 @@ def test_timeout_falls_back(monkeypatch):
     r = extract(TEXT)
     llm_refiner.refine(TEXT, r, call=slow)
     assert r["mode"] == "nltk" and "timed out" in r["ai"]["error"]
+
+
+def http_error(code):
+    return urllib.error.HTTPError("https://ai.example", code, "error", {}, None)
+
+
+def test_busy_provider_is_tried_once_more(monkeypatch):
+    with_key(monkeypatch)
+    monkeypatch.setattr(llm_refiner.time, "sleep", lambda s: None)
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    calls = []
+
+    def busy_then_ok(system, user, cfg):
+        calls.append((cfg["model"], cfg["timeout"]))
+        if len(calls) == 1:
+            raise http_error(503)
+        return json.dumps({"items": [{"text": "Mount Kailash", "type": "PLACE"}]})
+
+    r = extract(TEXT)
+    llm_refiner.refine(TEXT, r, call=busy_then_ok)
+    assert len(calls) == 2 and r["mode"] == "hybrid"
+    assert calls[1][0] == llm_refiner.GEMINI_BACKUP_MODEL == r["ai"]["model"]
+    assert calls[1][1] < calls[0][1]              # both tries share one time limit
+
+
+def test_busy_twice_falls_back_with_a_clear_message(monkeypatch):
+    with_key(monkeypatch)
+    monkeypatch.setattr(llm_refiner.time, "sleep", lambda s: None)
+
+    def always_busy(system, user, cfg):
+        raise http_error(503)
+
+    r = extract(TEXT)
+    llm_refiner.refine(TEXT, r, call=always_busy)
+    assert r["mode"] == "nltk" and "busy" in r["ai"]["error"]
+
+
+def test_wrong_key_is_not_retried(monkeypatch):
+    with_key(monkeypatch)
+    calls = []
+
+    def forbidden(system, user, cfg):
+        calls.append(1)
+        raise http_error(403)
+
+    r = extract(TEXT)
+    llm_refiner.refine(TEXT, r, call=forbidden)
+    assert len(calls) == 1 and "LLM_API_KEY" in r["ai"]["error"]
 
 
 def test_code_fences_are_accepted(monkeypatch):

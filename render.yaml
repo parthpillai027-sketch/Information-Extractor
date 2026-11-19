@@ -20,9 +20,11 @@ services:
       # stored in git. Leave it empty to run with NLTK only.
       - key: LLM_API_KEY
         sync: false
+      # Gemini: a free key from aistudio.google.com works. The lite model answers in about
+      # 5-12 s; LLM_TIMEOUT is the total for both tries (one retry when Gemini is busy).
       - key: LLM_PROVIDER
-        value: xai
+        value: gemini
       - key: LLM_MODEL
-        sync: false
+        value: gemini-3.1-flash-lite
       - key: LLM_TIMEOUT
-        value: "10"
+        value: "25"

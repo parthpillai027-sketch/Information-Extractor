@@ -6,16 +6,18 @@ How it works
      plus NLTK's typed items and facts are sent to the LLM, which returns corrected JSON.
   3. The answer is validated strictly: allowed types only, and every piece of text must be
      copied exactly from the input text (so the LLM cannot invent facts).
-  4. Any problem (no key, timeout after LLM_TIMEOUT seconds, HTTP error, bad JSON) -> the NLTK
-     result is kept and "ai.error" says why. The website never breaks because of the LLM.
+  4. If the provider is busy (HTTP 5xx, common on free tiers) the call is tried once more,
+     within the same time limit (Gemini: with a backup model).
+     Any other problem (no key, timeout after LLM_TIMEOUT seconds, HTTP error, bad JSON) -> the
+     NLTK result is kept and "ai.error" says why. The website never breaks because of the LLM.
 
 Settings (environment variables, or a .env file in the project folder; see .env.example):
   LLM_API_KEY    required to enable smart mode (never commit it)
   LLM_PROVIDER   "xai" (default, Grok), "gemini", or "openai" (any OpenAI-compatible API)
   LLM_MODEL      model name. Empty = ask the provider's /models list and pick a Grok text
-                 model (xai), or "gemini-flash-latest" (Gemini's auto-updating alias)
+                 model (xai), or "gemini-3.1-flash-lite" (Gemini's fast lite model)
   LLM_BASE_URL   API address for xai/openai; default https://api.x.ai/v1 for xai
-  LLM_TIMEOUT    seconds, default 10
+  LLM_TIMEOUT    seconds for the whole AI step (both tries), default 25
 """
 import functools
 import json
@@ -38,6 +40,13 @@ LIST_SLOTS = ["who", "what", "where", "when", "how_much", "contact", "affiliatio
 DEFAULT_BASE_URL = {"xai": "https://api.x.ai/v1", "openai": "https://api.openai.com/v1"}
 MAX_TEXT_FOR_LLM = 8000
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+# The "flash-latest" alias points to a slower thinking model (often 10-30 s); the lite model
+# answered in about 5-10 s with the same corrections in our tests.
+GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite"
+GEMINI_BACKUP_MODEL = "gemini-flash-lite-latest"   # used for the second try when the first is busy
+DEFAULT_TIMEOUT = 25.0                  # total for both tries; one answer usually takes 5-12 s
+BUSY_CODES = {500, 502, 503, 504}       # provider overloaded: worth one more try
+MIN_RETRY_SECONDS = 5
 
 SYSTEM_PROMPT = """You check the output of an NLTK information-extraction system for English text
 (often Indian names, places, deities, organisations, notices and messages).
@@ -64,11 +73,11 @@ def config():
     provider = (os.environ.get("LLM_PROVIDER") or "xai").strip().lower()
     if provider == "grok":
         provider = "xai"
-    default_model = "gemini-flash-latest" if provider == "gemini" else ""
+    default_model = GEMINI_DEFAULT_MODEL if provider == "gemini" else ""
     try:
-        timeout = float(os.environ.get("LLM_TIMEOUT") or 10)
+        timeout = float(os.environ.get("LLM_TIMEOUT") or DEFAULT_TIMEOUT)
     except ValueError:
-        timeout = 10.0
+        timeout = DEFAULT_TIMEOUT
     return {
         "provider": provider,
         "key": (os.environ.get("LLM_API_KEY") or "").strip(),
@@ -214,6 +223,23 @@ def _apply(result, items, facts):
     result["corrections"] = corrections
 
 
+def _ask(call, system, user, cfg):
+    """Call the LLM. If the provider is busy (HTTP 5xx), try once more within the same time
+    limit; for Gemini the second try uses a backup model, which has its own capacity."""
+    start = time.perf_counter()
+    try:
+        return call(system, user, cfg)
+    except urllib.error.HTTPError as err:
+        left = cfg["timeout"] - (time.perf_counter() - start) - 1
+        if err.code not in BUSY_CODES or left < MIN_RETRY_SECONDS:
+            raise
+    time.sleep(1)
+    if cfg["provider"] == "gemini" and cfg["model"] != GEMINI_BACKUP_MODEL:
+        cfg["model"] = GEMINI_BACKUP_MODEL
+    cfg["timeout"] = left
+    return call(system, user, cfg)
+
+
 def refine(text, result, call=None):
     """Improve `result` in place with the LLM. Never raises; always leaves a usable result."""
     cfg = config()
@@ -230,9 +256,9 @@ def refine(text, result, call=None):
         "facts": [{k: f.get(k, []) for k in ["who", "action"] + LIST_SLOTS[1:]}
                   for f in result["facts"]][:40],
     }
-    start = time.perf_counter()
+    start, limit = time.perf_counter(), cfg["timeout"]
     try:
-        answer = (call or _call_llm)(SYSTEM_PROMPT, json.dumps(payload, ensure_ascii=False), cfg)
+        answer = _ask(call or _call_llm, SYSTEM_PROMPT, json.dumps(payload, ensure_ascii=False), cfg)
         items, facts = validate(_parse_json(answer), text)
         if not items:
             raise ValueError("AI answer had no valid items")
@@ -241,10 +267,17 @@ def refine(text, result, call=None):
         ai["model"] = cfg["model"]
         result["mode"] = "hybrid"
     except urllib.error.HTTPError as err:
-        hint = " (check LLM_MODEL / LLM_API_KEY)" if err.code in (400, 401, 403, 404) else ""
+        if err.code in (400, 401, 403, 404):
+            hint = " (check LLM_MODEL / LLM_API_KEY)"
+        elif err.code == 429:
+            hint = " (rate limit reached; wait a minute)"
+        elif err.code in BUSY_CODES:
+            hint = " (the AI service is busy; try again)"
+        else:
+            hint = ""
         ai["error"] = f"AI request failed: HTTP {err.code}{hint}"
     except (socket.timeout, TimeoutError):
-        ai["error"] = f"AI request timed out after {cfg['timeout']:g}s"
+        ai["error"] = f"AI request timed out after {limit:g}s"
     except urllib.error.URLError as err:
         reason = err.reason if not isinstance(err.reason, socket.timeout) else "timeout"
         ai["error"] = f"AI request failed: {reason}"
