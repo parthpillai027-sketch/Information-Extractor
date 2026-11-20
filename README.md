@@ -2,7 +2,7 @@
 
 An **information extraction** website built with **NLTK**. Paste any English text and it finds **who did what, where, when and how much**, not just keywords.
 
-> Live demo: _add link after deployment_
+> Live demo: [Information Extractor](https://information-extractor-hnbs.onrender.com)
 
 ## What it extracts
 For *"Lord Shiva and Goddess Parvati live on Mount Kailash. Rahul Sharma from Infosys will visit Bengaluru on 15 Nov 2026."*
@@ -166,7 +166,7 @@ render.yaml           Render deployment blueprint;  .env.example: AI settings te
 
 ## Team
 - S Krithik Yadav — NLP engine and backend
-- _Member 2 name_ — Website & deployment
+- Parth Pillai — Website & deployment
 
 ## License
 MIT
